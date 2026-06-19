@@ -59,6 +59,14 @@ export const getQuizById = async (
   });
 };
 
+export const getAllQuizzes = async () => {
+  return prisma.quiz.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+};
+
 export const submitQuiz = async (
   userId: string,
   quizId: string,
@@ -105,21 +113,25 @@ export const submitQuiz = async (
   });
 
   const total = quiz.questions.length;
-  const percentage = (score / total) * 100;
 
-  const attempt = await prisma.attempt.create({
-    data: {
-      userId,
-      quizId,
-      score,
-      percentage,
-    },
-  });
+  const percentage =
+    (score / total) * 100;
+
+  const attempt =
+    await prisma.attempt.create({
+      data: {
+        userId,
+        quizId,
+        score,
+        percentage,
+      },
+    });
 
   await prisma.answer.createMany({
     data: quiz.questions.map(
       (question, index) => {
-        const selectedIndex = answers[index];
+        const selectedIndex =
+          answers[index];
 
         const options = [
           question.optionA,
@@ -171,10 +183,19 @@ export const getAttemptById = async (
     },
   });
 };
-export const getAllQuizzes = async () => {
-  return prisma.quiz.findMany({
+
+export const getUserHistory = async (
+  userId: string
+) => {
+  return prisma.attempt.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      quiz: true,
+    },
     orderBy: {
-      createdAt: "desc",
+      submittedAt: "desc",
     },
   });
 };

@@ -6,6 +6,7 @@ import {
   getQuiz,
   submit,
   getAttempt,
+  history,
 } from "../controllers/quiz.controller";
 
 import { authenticate } from "../middleware/auth.middleware";
@@ -22,6 +23,12 @@ router.post(
 router.get(
   "/",
   getAll
+);
+
+router.get(
+  "/history",
+  authenticate,
+  history
 );
 
 router.get(

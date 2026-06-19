@@ -6,6 +6,7 @@ import {
   submitQuiz,
   getAttemptById,
   getAllQuizzes,
+  getUserHistory,
 } from "../services/quiz.service";
 
 export const create = async (
@@ -86,7 +87,9 @@ export const getQuiz = async (
   try {
     const quizId = req.params.quizId as string;
 
-    const quiz = await getQuizById(quizId);
+    const quiz = await getQuizById(
+      quizId
+    );
 
     res.json(quiz);
   } catch (error: any) {
@@ -131,9 +134,32 @@ export const getAttempt = async (
       req.params.attemptId as string;
 
     const attempt =
-      await getAttemptById(attemptId);
+      await getAttemptById(
+        attemptId
+      );
 
     res.json(attempt);
+  } catch (error: any) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
+export const history = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId =
+      (req as any).user.userId;
+
+    const attempts =
+      await getUserHistory(
+        userId
+      );
+
+    res.json(attempts);
   } catch (error: any) {
     res.status(400).json({
       message: error.message,

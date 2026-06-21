@@ -7,6 +7,8 @@ import {
   getAttemptById,
   getAllQuizzes,
   getUserHistory,
+  updateQuestion,
+  deleteQuestion,
 } from "../services/quiz.service";
 
 export const create = async (
@@ -160,6 +162,52 @@ export const history = async (
       );
 
     res.json(attempts);
+  } catch (error: any) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+export const update = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const questionId =
+  req.params.questionId as string;
+
+    const result =
+      await updateQuestion(
+        questionId,
+        req.body.question,
+        req.body.optionA,
+        req.body.optionB,
+        req.body.optionC,
+        req.body.optionD,
+        req.body.correctAnswer
+      );
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
+export const remove = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    await deleteQuestion(
+  req.params.questionId as string
+);
+
+    res.json({
+      message:
+        "Question deleted successfully",
+    });
   } catch (error: any) {
     res.status(400).json({
       message: error.message,

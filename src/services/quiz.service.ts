@@ -199,3 +199,36 @@ export const getUserHistory = async (
     },
   });
 };
+export const updateQuestion = async (
+  questionId: string,
+  question: string,
+  optionA: string,
+  optionB: string,
+  optionC: string,
+  optionD: string,
+  correctAnswer: string
+) => {
+  return prisma.question.update({
+    where: {
+      id: questionId,
+    },
+    data: {
+      question,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctAnswer,
+    },
+  });
+};
+
+export const deleteQuestion = async (
+  questionId: string
+) => {
+  return prisma.question.delete({
+    where: {
+      id: questionId,
+    },
+  });
+};

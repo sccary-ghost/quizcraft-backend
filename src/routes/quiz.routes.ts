@@ -7,6 +7,8 @@ import {
   submit,
   getAttempt,
   history,
+  update,
+  remove,
 } from "../controllers/quiz.controller";
 
 import { authenticate } from "../middleware/auth.middleware";
@@ -45,6 +47,15 @@ router.post(
   "/:quizId/submit",
   authenticate,
   submit
+);
+router.put(
+  "/question/:questionId",
+  update
+);
+
+router.delete(
+  "/question/:questionId",
+  remove
 );
 
 export default router;

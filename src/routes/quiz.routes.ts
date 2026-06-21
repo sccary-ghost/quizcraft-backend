@@ -1,3 +1,5 @@
+import { upload } from "../middleware/upload.middleware";
+import { uploadQuestions } from "../controllers/bulkUpload.controller";
 import { Router } from "express";
 import {
   create,
@@ -57,5 +59,9 @@ router.delete(
   "/question/:questionId",
   remove
 );
-
+router.post(
+  "/:quizId/upload",
+  upload.single("file"),
+  uploadQuestions
+);
 export default router;

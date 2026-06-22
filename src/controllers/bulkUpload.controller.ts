@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
+import path from "path";
 import { parseExcel } from "../utils/excelParser";
+import { parsePdf } from "../utils/pdfParser";
 import { bulkUploadQuestions } from "../services/bulkUpload.service";
 
 export const uploadQuestions = async (
@@ -16,9 +18,41 @@ export const uploadQuestions = async (
       });
     }
 
-    const rows = parseExcel(
-      req.file.buffer
-    );
+    const extension = path.extname(
+      req.file.originalname
+    ).toLowerCase();
+
+    let rows: any[] = [];
+
+    if (
+      extension === ".xlsx" ||
+      extension === ".csv"
+    ) {
+      rows = parseExcel(
+        req.file.buffer
+      );
+    }
+
+    else if (extension === ".pdf") {
+
+      rows = await parsePdf(
+  req.file.buffer
+);
+    }
+
+    else if (extension === ".docx") {
+      return res.status(400).json({
+        message:
+          "DOCX parser coming next",
+      });
+    }
+
+    else {
+      return res.status(400).json({
+        message:
+          "Unsupported file type",
+      });
+    }
 
     const result =
       await bulkUploadQuestions(
@@ -27,9 +61,12 @@ export const uploadQuestions = async (
       );
 
     res.json(result);
+
   } catch (error: any) {
+
     res.status(400).json({
       message: error.message,
     });
+
   }
 };

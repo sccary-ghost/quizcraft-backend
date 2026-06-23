@@ -4,17 +4,16 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String    @unique
   password  String
-  createdAt DateTime @default(now())
-
-  attempts Attempt[]
+  createdAt DateTime  @default(now())
+  attempts  Attempt[]
 }
 
 model Quiz {
@@ -23,12 +22,12 @@ model Quiz {
   description String?
   duration    Int
   createdAt   DateTime   @default(now())
-  questions   Question[]
   attempts    Attempt[]
+  questions   Question[]
 }
 
 model Question {
-  id            String @id @default(cuid())
+  id            String   @id @default(cuid())
   quizId        String
   question      String
   optionA       String
@@ -36,11 +35,9 @@ model Question {
   optionC       String
   optionD       String
   correctAnswer String
-
-  quiz Quiz @relation(fields: [quizId], references: [id])
-
-  createdAt DateTime @default(now())
-  answers Answer[]
+  createdAt     DateTime @default(now())
+  answers       Answer[]
+  quiz          Quiz     @relation(fields: [quizId], references: [id])
 }
 
 model Attempt {
@@ -50,11 +47,11 @@ model Attempt {
   score       Int
   percentage  Float
   submittedAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-  quiz Quiz @relation(fields: [quizId], references: [id])
-  answers Answer[]
+  answers     Answer[]
+  quiz        Quiz     @relation(fields: [quizId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
 }
+
 model Answer {
   id             String   @id @default(cuid())
   attemptId      String
@@ -62,7 +59,12 @@ model Answer {
   selectedAnswer String?
   isCorrect      Boolean
   timeSpent      Int
+  attempt        Attempt  @relation(fields: [attemptId], references: [id])
+  question       Question @relation(fields: [questionId], references: [id])
+}
 
-  attempt Attempt @relation(fields: [attemptId], references: [id])
-  question Question @relation(fields: [questionId], references: [id])
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
 }

@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import path from "path";
 import { parseExcel } from "../utils/excelParser";
 import { parsePdf } from "../utils/pdfParser";
+import { extractPdfWithOCR } from "../utils/ocrPdf";
+import { parseQuestionText } from "../utils/parseQuestionText";
+import { parseDocx } from "../utils/docxParser";
 import { bulkUploadQuestions } from "../services/bulkUpload.service";
 
 export const uploadQuestions = async (
@@ -9,6 +12,7 @@ export const uploadQuestions = async (
   res: Response
 ) => {
   try {
+
     const quizId =
       req.params.quizId as string;
 
@@ -28,30 +32,49 @@ export const uploadQuestions = async (
       extension === ".xlsx" ||
       extension === ".csv"
     ) {
+
       rows = parseExcel(
         req.file.buffer
       );
+
     }
 
     else if (extension === ".pdf") {
 
       rows = await parsePdf(
-  req.file.buffer
-);
+        req.file.buffer
+      );
+
+      if (rows.length < 2) {
+
+        const ocrText =
+          await extractPdfWithOCR(
+            req.file.buffer
+          );
+
+        rows = parseQuestionText(
+          ocrText
+        );
+
+      }
+
     }
 
     else if (extension === ".docx") {
-      return res.status(400).json({
-        message:
-          "DOCX parser coming next",
-      });
+
+      rows = await parseDocx(
+        req.file.buffer
+      );
+
     }
 
     else {
+
       return res.status(400).json({
         message:
           "Unsupported file type",
       });
+
     }
 
     const result =
@@ -62,11 +85,14 @@ export const uploadQuestions = async (
 
     res.json(result);
 
-  } catch (error: any) {
+  }
+
+  catch (error: any) {
 
     res.status(400).json({
       message: error.message,
     });
 
   }
+
 };

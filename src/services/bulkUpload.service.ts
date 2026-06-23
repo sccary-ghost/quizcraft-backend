@@ -4,14 +4,24 @@ export async function bulkUploadQuestions(
   quizId: string,
   rows: any[]
 ) {
-  const questions = rows.map((row) => ({
+
+  const validRows = rows.filter(
+    (row) =>
+      row.question &&
+      row.optionA &&
+      row.optionB &&
+      row.optionC &&
+      row.optionD
+  );
+
+  const questions = validRows.map((row) => ({
     quizId,
     question: row.question,
     optionA: row.optionA,
     optionB: row.optionB,
     optionC: row.optionC,
     optionD: row.optionD,
-    correctAnswer: row.correctAnswer,
+    correctAnswer: row.correctAnswer || "",
   }));
 
   await prisma.question.createMany({

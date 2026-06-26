@@ -1,47 +1,79 @@
-function isQuestionStart(line: string) {
+function isQuestionStart(
+  line: string
+) {
   return (
     /^Q\.?\s*\d+/i.test(line) ||
-    /^\d+[.)]\s+/.test(line)
+    /^\d+[.)]\s*/.test(line) ||
+    /^\d+\.\d/.test(line) ||
+    /^\.\s*[\u0900-\u097F]/.test(line) ||
+    /^0\.\s*[\u0900-\u097F]/.test(line)
   );
+}
+
+function removeQuestionNumber(
+  line: string
+) {
+  return line
+    .replace(
+      /^Q\.?\s*\d+[.)]?\s*/i,
+      ""
+    )
+    .replace(
+      /^\d+[.)]\s*/,
+      ""
+    )
+    .replace(
+      /^\.\s*/,
+      ""
+    )
+    .trim();
+}
+
+function cleanOptionLabel(
+  line: string
+) {
+  return line
+    .replace(/^\(8\)/, "(a)")
+    .replace(/^\(०\)/, "(b)")
+    .replace(/^\(0\)/, "(b)")
+    .replace(/^\(८\)/, "(c)")
+    .replace(/^\(५४\)/, "(d)")
+    .replace(/^\(५\)/, "(d)");
 }
 
 export function parseQuestionText(
   text: string
 ) {
+
   const lines = text
     .split("\n")
-    .map((line: string) => line.trim())
+    .map(line => line.trim())
     .filter(Boolean);
 
   const rows: any[] = [];
 
   let current: any = null;
   let currentOption = "";
+  let optionCount = 0;
 
   for (const line of lines) {
 
-    if (
-      isQuestionStart(line) &&
-      (
-        !current ||
+    if (isQuestionStart(line)) {
+
+      if (
+        current &&
         (
-          current.optionA &&
-          current.optionB &&
-          current.optionC &&
+          current.optionA ||
+          current.optionB ||
+          current.optionC ||
           current.optionD
         )
-      )
-    ) {
-
-      if (current) {
+      ) {
         rows.push(current);
       }
 
       current = {
-        question: line.replace(
-          /^Q\.?\s*\d+[.)]?\s*/i,
-          ""
-        ),
+        question: removeQuestionNumber(line),
         optionA: "",
         optionB: "",
         optionC: "",
@@ -50,45 +82,43 @@ export function parseQuestionText(
       };
 
       currentOption = "";
+      optionCount = 0;
 
       continue;
     }
 
     if (!current) continue;
 
-    if (
-      /^\([aA]\)/.test(line) ||
-      /^a[.)]/i.test(line)
-    ) {
-      current.optionA = line;
-      currentOption = "A";
-      continue;
-    }
+    const looksLikeOption =
+      /^\(.+\)/.test(line);
 
-    if (
-      /^\([bB]\)/.test(line) ||
-      /^b[.)]/i.test(line)
-    ) {
-      current.optionB = line;
-      currentOption = "B";
-      continue;
-    }
+    if (looksLikeOption) {
 
-    if (
-      /^\([cC]\)/.test(line) ||
-      /^c[.)]/i.test(line)
-    ) {
-      current.optionC = line;
-      currentOption = "C";
-      continue;
-    }
+      optionCount++;
 
-    if (
-      /^\([dD]\)/.test(line) ||
-      /^d[.)]/i.test(line)
-    ) {
-      current.optionD = line;
-      currentOption = "D";
+      const cleaned =
+        cleanOptionLabel(line);
+
+      if (optionCount === 1) {
+        current.optionA = cleaned;
+        currentOption = "A";
+      }
+
+      else if (optionCount === 2) {
+        current.optionB = cleaned;
+        currentOption = "B";
+      }
+
+      else if (optionCount === 3) {
+        current.optionC = cleaned;
+        currentOption = "C";
+      }
+
+      else if (optionCount === 4) {
+        current.optionD = cleaned;
+        currentOption = "D";
+      }
+
       continue;
     }
 
@@ -109,32 +139,20 @@ export function parseQuestionText(
     }
 
     else {
-
-      if (
-        /^\d+\./.test(line) ||
-        /^[ivxlcdm]+\./i.test(line)
-      ) {
-        current.question += "\n" + line;
-      }
-
-      else if (
-        /^Which /i.test(line) ||
-        /^Who /i.test(line) ||
-        /^Select /i.test(line) ||
-        /^Choose /i.test(line)
-      ) {
-        current.question += "\n\n" + line;
-      }
-
-      else {
-        current.question += " " + line;
-      }
-
+      current.question += " " + line;
     }
 
   }
 
-  if (current) {
+  if (
+    current &&
+    (
+      current.optionA ||
+      current.optionB ||
+      current.optionC ||
+      current.optionD
+    )
+  ) {
     rows.push(current);
   }
 

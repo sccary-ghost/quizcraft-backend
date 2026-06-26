@@ -41,11 +41,11 @@ export const uploadQuestions = async (
 
     else if (extension === ".pdf") {
 
-      rows = await parsePdf(
-        req.file.buffer
-      );
+      const fileName =
+        req.file.originalname.toLowerCase();
 
-      if (rows.length < 2) {
+      // Hindi PDFs → OCR directly
+      if (fileName.includes("hindi")) {
 
         const ocrText =
           await extractPdfWithOCR(
@@ -55,6 +55,29 @@ export const uploadQuestions = async (
         rows = parseQuestionText(
           ocrText
         );
+
+      }
+
+      // English PDFs → pdf-parse
+      else {
+
+        rows = await parsePdf(
+          req.file.buffer
+        );
+
+        // OCR fallback for scanned PDFs
+        if (rows.length < 2) {
+
+          const ocrText =
+            await extractPdfWithOCR(
+              req.file.buffer
+            );
+
+          rows = parseQuestionText(
+            ocrText
+          );
+
+        }
 
       }
 

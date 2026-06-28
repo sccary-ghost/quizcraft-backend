@@ -11,11 +11,21 @@ import {
   history,
   update,
   remove,
+  getBankQuestions,
 } from "../controllers/quiz.controller";
-
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
+
+// Master Question Bank Upload Route
+router.post(
+  "/upload",
+  upload.single("file"),
+  uploadQuestions
+);
+
+// Master Bank Explorer Route
+router.get("/bank/questions", getBankQuestions);
 
 router.post("/create", create);
 
@@ -50,6 +60,7 @@ router.post(
   authenticate,
   submit
 );
+
 router.put(
   "/question/:questionId",
   update
@@ -59,9 +70,5 @@ router.delete(
   "/question/:questionId",
   remove
 );
-router.post(
-  "/:quizId/upload",
-  upload.single("file"),
-  uploadQuestions
-);
+
 export default router;

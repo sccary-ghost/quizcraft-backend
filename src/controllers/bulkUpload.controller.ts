@@ -1,121 +1,52 @@
 import { Request, Response } from "express";
-import path from "path";
-import { parseExcel } from "../utils/excelParser";
-import { parsePdf } from "../utils/pdfParser";
-import { extractPdfWithOCR } from "../utils/ocrPdf";
 import { parseQuestionText } from "../utils/parseQuestionText";
-import { parseDocx } from "../utils/docxParser";
-import { bulkUploadQuestions } from "../services/bulkUpload.service";
+import prisma from "../utils/prisma";
+import pdfParse from "pdf-parse";
 
-export const uploadQuestions = async (
-  req: Request,
-  res: Response
-) => {
+export const uploadQuestions = async (req: Request, res: Response) => {
   try {
+    const { subject, chapter, topic } = req.body;
+    const file = req.file;
 
-    const quizId =
-      req.params.quizId as string;
+    if (!file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-    if (!req.file) {
-      return res.status(400).json({
-        message: "No file uploaded",
+    let fileContent = "";
+
+    // Agar file PDF hai, toh pdf-parse use karo
+    if (file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith(".pdf")) {
+      const pdfData = await pdfParse(file.buffer);
+      fileContent = pdfData.text;
+    } else {
+      // Agar CSV ya TXT hai, toh normal buffer to string
+      fileContent = file.buffer.toString("utf8");
+    }
+
+    // Ab tumhara original parser convert kiye hue text ko parse karega
+    const questions = parseQuestionText(fileContent);
+
+    if (questions.length === 0) {
+      return res.status(400).json({ 
+        message: "No questions extracted. Ensure your PDF has standard numbering like '1.' and options like '(a)'." 
       });
     }
 
-    const extension = path.extname(
-      req.file.originalname
-    ).toLowerCase();
+    const questionsData = questions.map((q: any) => ({
+      ...q,
+      subject: subject || "Uncategorized",
+      chapter: chapter || "Uncategorized",
+      topic: topic || "Uncategorized",
+      isBank: true,
+    }));
 
-    let rows: any[] = [];
+    await prisma.question.createMany({ data: questionsData });
 
-    if (
-      extension === ".xlsx" ||
-      extension === ".csv"
-    ) {
-
-      rows = parseExcel(
-        req.file.buffer
-      );
-
-    }
-
-    else if (extension === ".pdf") {
-
-      const fileName =
-        req.file.originalname.toLowerCase();
-
-      // Hindi PDFs → OCR directly
-      if (fileName.includes("hindi")) {
-
-        const ocrText =
-          await extractPdfWithOCR(
-            req.file.buffer
-          );
-
-        rows = parseQuestionText(
-          ocrText
-        );
-
-      }
-
-      // English PDFs → pdf-parse
-      else {
-
-        rows = await parsePdf(
-          req.file.buffer
-        );
-
-        // OCR fallback for scanned PDFs
-        if (rows.length < 2) {
-
-          const ocrText =
-            await extractPdfWithOCR(
-              req.file.buffer
-            );
-
-          rows = parseQuestionText(
-            ocrText
-          );
-
-        }
-
-      }
-
-    }
-
-    else if (extension === ".docx") {
-
-      rows = await parseDocx(
-        req.file.buffer
-      );
-
-    }
-
-    else {
-
-      return res.status(400).json({
-        message:
-          "Unsupported file type",
-      });
-
-    }
-
-    const result =
-      await bulkUploadQuestions(
-        quizId,
-        rows
-      );
-
-    res.json(result);
-
-  }
-
-  catch (error: any) {
-
-    res.status(400).json({
-      message: error.message,
+    res.json({
+      message: "Questions successfully added to Master Bank",
+      count: questionsData.length,
     });
-
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
-
 };

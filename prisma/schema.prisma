@@ -28,16 +28,21 @@ model Quiz {
 
 model Question {
   id            String   @id @default(cuid())
-  quizId        String
+  quizId        String?  // Optional banaya taaki question bina quiz ke bank mein reh sake
   question      String
   optionA       String
   optionB       String
   optionC       String
   optionD       String
   correctAnswer String
+  explanation   String?
+  subject       String?  // Naya: Filter ke liye
+  chapter       String?  // Naya: Filter ke liye
+  topic         String?  // Naya: Filter ke liye
+  isBank        Boolean  @default(false) // Naya: Master bank identify karne ke liye
   createdAt     DateTime @default(now())
   answers       Answer[]
-  quiz          Quiz     @relation(fields: [quizId], references: [id])
+  quiz          Quiz?    @relation(fields: [quizId], references: [id])
 }
 
 model Attempt {

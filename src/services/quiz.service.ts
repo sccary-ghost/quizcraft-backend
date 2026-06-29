@@ -25,7 +25,15 @@ export const getQuizById = async (quizId: string) => {
 
 export const getAllQuizzes = async () => {
   return prisma.quiz.findMany({
-    orderBy: { createdAt: "desc" },
+    where: {
+      isDeleted: false,
+    },
+    include: {
+      questions: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 };
 
@@ -104,5 +112,27 @@ export const updateQuestion = async (
 export const deleteQuestion = async (questionId: string) => {
   return prisma.question.delete({
     where: { id: questionId },
+  });
+};
+export const moveQuizToTrash = async (quizId: string) => {
+  return prisma.quiz.update({
+    where: {
+      id: quizId,
+    },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date(),
+    },
+  });
+};
+export const restoreQuiz = async (quizId: string) => {
+  return prisma.quiz.update({
+    where: {
+      id: quizId,
+    },
+    data: {
+      isDeleted: false,
+      deletedAt: null,
+    },
   });
 };

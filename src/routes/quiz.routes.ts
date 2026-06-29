@@ -12,6 +12,8 @@ import {
   update,
   remove,
   getBankQuestions,
+  trashQuiz,
+  restoreQuizController,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -69,6 +71,16 @@ router.put(
 router.delete(
   "/question/:questionId",
   remove
+);
+
+router.patch(
+  "/:quizId/trash",
+  trashQuiz
+);
+
+router.patch(
+  "/:quizId/restore",
+  restoreQuizController
 );
 
 export default router;

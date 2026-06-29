@@ -9,7 +9,10 @@ import {
   getUserHistory,
   updateQuestion,
   deleteQuestion,
+  moveQuizToTrash,
+  restoreQuiz,
 } from "../services/quiz.service";
+
 import prisma from "../utils/prisma"; // Ye line add karo!
 export const create = async (req: Request, res: Response) => {
   try {
@@ -109,6 +112,35 @@ export const remove = async (req: Request, res: Response) => {
     res.json({ message: "Question deleted successfully" });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  }
+};
+export const trashQuiz = async (req: Request, res: Response) => {
+  try {
+
+    await moveQuizToTrash(req.params.quizId as string);
+    res.json({
+      message: "Quiz moved to Trash successfully",
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+export const restoreQuizController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    await restoreQuiz(req.params.quizId as string);
+
+    res.json({
+      message: "Quiz restored successfully",
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 export const getBankQuestions = async (req: Request, res: Response) => {

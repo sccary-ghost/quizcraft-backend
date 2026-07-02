@@ -110,7 +110,10 @@ export const submitQuiz = async (
 export const getAttemptById = async (attemptId: string) => {
   return prisma.attempt.findUnique({
     where: { id: attemptId },
-    include: { answers: { include: { question: true } } },
+    include: {
+      answers: { include: { question: true } },
+      quiz: true,
+    },
   });
 };
 

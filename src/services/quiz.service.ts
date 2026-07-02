@@ -8,10 +8,32 @@ export const createQuiz = async (title: string, description: string, duration: n
 };
 
 export const addQuestion = async (
-  quizId: string, question: string, optionA: string, optionB: string, optionC: string, optionD: string, correctAnswer: string
+  quizId: string,
+  question: string,
+  optionA: string,
+  optionB: string,
+  optionC: string,
+  optionD: string,
+  correctAnswer: string,
+  explanation?: string,
+  subject?: string,
+  chapter?: string,
+  topic?: string
 ) => {
   const newQuestion = await prisma.question.create({
-    data: { quizId, question, optionA, optionB, optionC, optionD, correctAnswer },
+    data: {
+      quizId,
+      question,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctAnswer,
+      explanation: explanation || null,
+      subject: subject || null,
+      chapter: chapter || null,
+      topic: topic || null,
+    },
   });
   return { message: "Question added successfully", question: newQuestion };
 };

@@ -27,8 +27,31 @@ export const create = async (req: Request, res: Response) => {
 export const add = async (req: Request, res: Response) => {
   try {
     const quizId = req.params.quizId as string;
-    const { question, optionA, optionB, optionC, optionD, correctAnswer } = req.body;
-    const result = await addQuestion(quizId, question, optionA, optionB, optionC, optionD, correctAnswer);
+    const {
+      question,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctAnswer,
+      explanation,
+      subject,
+      chapter,
+      topic,
+    } = req.body;
+    const result = await addQuestion(
+      quizId,
+      question,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctAnswer,
+      explanation,
+      subject,
+      chapter,
+      topic
+    );
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

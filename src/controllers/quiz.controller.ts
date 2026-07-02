@@ -221,3 +221,26 @@ export const getAdminStats = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+import fs from "fs";
+import path from "path";
+
+export const uploadImageController = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const fileName = `${Date.now()}-${req.file.originalname.replace(/\s+/g, "_")}`;
+    const uploadsDir = path.join(__dirname, "../../uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const filePath = path.join(uploadsDir, fileName);
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
+    res.json({ url: imageUrl });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

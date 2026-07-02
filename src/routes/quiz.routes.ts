@@ -15,6 +15,7 @@ import {
   trashQuiz,
   restoreQuizController,
   getAdminStats,
+  uploadImageController,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -32,6 +33,9 @@ router.get("/bank/questions", getBankQuestions);
 
 // Admin Stats Route
 router.get("/admin/stats", getAdminStats);
+
+// Upload Image Route
+router.post("/upload-image", upload.single("image"), uploadImageController);
 
 router.post("/create", create);
 

@@ -4,6 +4,8 @@ import questionsRoutes from "./routes/questions.routes";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
@@ -11,6 +13,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Ensure uploads folder exists
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/auth", authRoutes);
 app.use("/quiz", quizRoutes);
 app.use("/questions", questionsRoutes);

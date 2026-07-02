@@ -1,5 +1,6 @@
 import quizRoutes from "./routes/quiz.routes";
 import authRoutes from "./routes/auth.routes";
+import questionsRoutes from "./routes/questions.routes";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -12,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/quiz", quizRoutes);
+app.use("/questions", questionsRoutes);
 
 app.get("/", (req, res) => {
   res.send("QuizCraft Backend Running 🚀");

@@ -160,3 +160,41 @@ export const getBankQuestions = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getAdminStats = async (req: Request, res: Response) => {
+  try {
+    const totalQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false },
+    });
+
+    const questionBank = await prisma.question.count({
+      where: { isBank: true },
+    });
+
+    // Unique subjects as categories
+    const categoriesResult = await prisma.question.groupBy({
+      by: ["subject"],
+      where: { isBank: true, subject: { not: null } },
+    });
+    const categories = categoriesResult.length;
+
+    const folders = 0;
+
+    const users = await prisma.user.count();
+
+    const trash = await prisma.quiz.count({
+      where: { isDeleted: true },
+    });
+
+    res.json({
+      totalQuizzes,
+      questionBank,
+      categories,
+      folders,
+      users,
+      trash,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -14,6 +14,7 @@ import {
   getBankQuestions,
   trashQuiz,
   restoreQuizController,
+  getAdminStats,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -28,6 +29,9 @@ router.post(
 
 // Master Bank Explorer Route
 router.get("/bank/questions", getBankQuestions);
+
+// Admin Stats Route
+router.get("/admin/stats", getAdminStats);
 
 router.post("/create", create);
 

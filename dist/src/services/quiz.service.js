@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
+exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.getTrashItems = exports.deleteQuizPermanently = exports.deleteQuestionPermanently = exports.restoreQuestion = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const updateQuizStatuses = async () => {
     try {
@@ -133,6 +133,7 @@ const getQuizById = async (quizId, isAdmin = false) => {
         where: { id: quizId },
         include: {
             questions: {
+                where: { isDeleted: false },
                 orderBy: {
                     createdAt: "asc"
                 }
@@ -199,7 +200,9 @@ const submitQuiz = async (userId, quizId, answers, questionTimes = {}) => {
     const quiz = await prisma_1.default.quiz.findUnique({
         where: { id: quizId },
         include: {
-            questions: true,
+            questions: {
+                where: { isDeleted: false }
+            },
             sections: true
         },
     });
@@ -482,11 +485,84 @@ const getReviewCommentsList = async (questionId) => {
 };
 exports.getReviewCommentsList = getReviewCommentsList;
 const deleteQuestion = async (questionId) => {
+    return prisma_1.default.question.update({
+        where: { id: questionId },
+        data: {
+            isDeleted: true,
+            deletedAt: new Date(),
+        },
+    });
+};
+exports.deleteQuestion = deleteQuestion;
+const restoreQuestion = async (questionId) => {
+    return prisma_1.default.question.update({
+        where: { id: questionId },
+        data: {
+            isDeleted: false,
+            deletedAt: null,
+        },
+    });
+};
+exports.restoreQuestion = restoreQuestion;
+const deleteQuestionPermanently = async (questionId) => {
+    await prisma_1.default.reviewComment.deleteMany({
+        where: { questionId },
+    });
+    await prisma_1.default.questionRevision.deleteMany({
+        where: { questionId },
+    });
+    await prisma_1.default.answer.deleteMany({
+        where: { questionId },
+    });
     return prisma_1.default.question.delete({
         where: { id: questionId },
     });
 };
-exports.deleteQuestion = deleteQuestion;
+exports.deleteQuestionPermanently = deleteQuestionPermanently;
+const deleteQuizPermanently = async (quizId) => {
+    const attempts = await prisma_1.default.attempt.findMany({
+        where: { quizId },
+    });
+    const attemptIds = attempts.map(a => a.id);
+    await prisma_1.default.answer.deleteMany({
+        where: { attemptId: { in: attemptIds } },
+    });
+    await prisma_1.default.attempt.deleteMany({
+        where: { quizId },
+    });
+    const questions = await prisma_1.default.question.findMany({
+        where: { quizId },
+    });
+    const questionIds = questions.map(q => q.id);
+    await prisma_1.default.reviewComment.deleteMany({
+        where: { questionId: { in: questionIds } },
+    });
+    await prisma_1.default.questionRevision.deleteMany({
+        where: { questionId: { in: questionIds } },
+    });
+    await prisma_1.default.question.deleteMany({
+        where: { quizId },
+    });
+    await prisma_1.default.section.deleteMany({
+        where: { quizId },
+    });
+    return prisma_1.default.quiz.delete({
+        where: { id: quizId },
+    });
+};
+exports.deleteQuizPermanently = deleteQuizPermanently;
+const getTrashItems = async () => {
+    const quizzes = await prisma_1.default.quiz.findMany({
+        where: { isDeleted: true },
+        orderBy: { deletedAt: "desc" },
+    });
+    const questions = await prisma_1.default.question.findMany({
+        where: { isDeleted: true },
+        orderBy: { deletedAt: "desc" },
+    });
+    return { quizzes, questions };
+};
+exports.getTrashItems = getTrashItems;
 const moveQuizToTrash = async (quizId) => {
     return prisma_1.default.quiz.update({
         where: {

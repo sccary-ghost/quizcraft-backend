@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
@@ -178,6 +178,7 @@ const getBankQuestions = async (req, res) => {
         const questions = await prisma_1.default.question.findMany({
             where: {
                 isBank: true,
+                isDeleted: false,
                 ...(subject && { subject: subject }),
                 ...(chapter && { chapter: chapter }),
             },
@@ -356,3 +357,49 @@ const getComments = async (req, res) => {
     }
 };
 exports.getComments = getComments;
+const getTrash = async (req, res) => {
+    try {
+        const trash = await (0, quiz_service_1.getTrashItems)();
+        res.json(trash);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getTrash = getTrash;
+const restoreQuestionController = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const restored = await (0, quiz_service_1.restoreQuestion)(questionId);
+        await (0, auditLogger_1.logAuditAction)(req, "Question Restored", questionId);
+        res.json({ message: "Question restored successfully", question: restored });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.restoreQuestionController = restoreQuestionController;
+const deleteQuestionPermanentlyController = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        await (0, quiz_service_1.deleteQuestionPermanently)(questionId);
+        await (0, auditLogger_1.logAuditAction)(req, "Question Deleted Forever", questionId);
+        res.json({ message: "Question permanently deleted successfully" });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.deleteQuestionPermanentlyController = deleteQuestionPermanentlyController;
+const deleteQuizPermanentlyController = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        await (0, quiz_service_1.deleteQuizPermanently)(quizId);
+        await (0, auditLogger_1.logAuditAction)(req, "Test Deleted Forever", quizId);
+        res.json({ message: "Quiz permanently deleted successfully" });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.deleteQuizPermanentlyController = deleteQuizPermanentlyController;

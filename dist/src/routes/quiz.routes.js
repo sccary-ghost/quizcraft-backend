@@ -30,6 +30,10 @@ router.post("/question/:questionId/versions/:versionId/restore", quiz_controller
 router.patch("/question/:questionId/status", quiz_controller_1.updateStatus);
 router.post("/question/:questionId/comments", quiz_controller_1.addComment);
 router.get("/question/:questionId/comments", quiz_controller_1.getComments);
+router.get("/trash/items", quiz_controller_1.getTrash);
+router.patch("/question/:questionId/restore-trash", quiz_controller_1.restoreQuestionController);
+router.delete("/question/:questionId/permanent", quiz_controller_1.deleteQuestionPermanentlyController);
+router.delete("/:quizId/permanent", quiz_controller_1.deleteQuizPermanentlyController);
 router.patch("/:quizId/trash", quiz_controller_1.trashQuiz);
 router.patch("/:quizId/restore", quiz_controller_1.restoreQuizController);
 exports.default = router;

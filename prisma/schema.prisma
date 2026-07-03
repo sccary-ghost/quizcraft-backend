@@ -68,6 +68,8 @@ model Question {
   isBank        Boolean  @default(false) // Naya: Master bank identify karne ke liye
   version       Int      @default(1)
   status        String   @default("Draft")
+  isDeleted     Boolean  @default(false)
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
   answers       Answer[]
   revisions     QuestionRevision[]

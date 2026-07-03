@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import {
   createQuiz,
-  addQuestion,
   getQuizById,
   submitQuiz,
   getAttemptById,
   getAllQuizzes,
   getUserHistory,
+  addQuestion,
   updateQuestion,
   deleteQuestion,
   moveQuizToTrash,
@@ -19,10 +19,15 @@ import {
   updateQuestionStatus,
   addReviewComment,
   getReviewCommentsList,
+  getTrashItems,
+  restoreQuestion,
+  deleteQuestionPermanently,
+  deleteQuizPermanently,
 } from "../services/quiz.service";
 
 import prisma from "../utils/prisma";
 import { logAuditAction } from "../utils/auditLogger";
+
 export const create = async (req: Request, res: Response) => {
   try {
     const { title, description, duration, sections, schedulingData } = req.body;
@@ -220,6 +225,7 @@ export const getBankQuestions = async (req: Request, res: Response) => {
     const questions = await prisma.question.findMany({
       where: {
         isBank: true,
+        isDeleted: false,
         ...(subject && { subject: subject as string }),
         ...(chapter && { chapter: chapter as string }),
       },
@@ -408,6 +414,48 @@ export const getComments = async (req: Request, res: Response) => {
     const questionId = req.params.questionId as string;
     const list = await getReviewCommentsList(questionId);
     res.json(list);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getTrash = async (req: Request, res: Response) => {
+  try {
+    const trash = await getTrashItems();
+    res.json(trash);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const restoreQuestionController = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const restored = await restoreQuestion(questionId);
+    await logAuditAction(req, "Question Restored", questionId);
+    res.json({ message: "Question restored successfully", question: restored });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteQuestionPermanentlyController = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    await deleteQuestionPermanently(questionId);
+    await logAuditAction(req, "Question Deleted Forever", questionId);
+    res.json({ message: "Question permanently deleted successfully" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteQuizPermanentlyController = async (req: Request, res: Response) => {
+  try {
+    const quizId = req.params.quizId as string;
+    await deleteQuizPermanently(quizId);
+    await logAuditAction(req, "Test Deleted Forever", quizId);
+    res.json({ message: "Quiz permanently deleted successfully" });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

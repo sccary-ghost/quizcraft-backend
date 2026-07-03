@@ -148,6 +148,7 @@ export const getQuizById = async (quizId: string, isAdmin = false) => {
     where: { id: quizId },
     include: { 
       questions: {
+        where: { isDeleted: false },
         orderBy: {
           createdAt: "asc"
         }
@@ -220,7 +221,9 @@ export const submitQuiz = async (
   const quiz = await prisma.quiz.findUnique({
     where: { id: quizId },
     include: { 
-      questions: true,
+      questions: {
+        where: { isDeleted: false }
+      },
       sections: true
     },
   });
@@ -540,9 +543,85 @@ export const getReviewCommentsList = async (questionId: string) => {
 };
 
 export const deleteQuestion = async (questionId: string) => {
+  return prisma.question.update({
+    where: { id: questionId },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date(),
+    },
+  });
+};
+
+export const restoreQuestion = async (questionId: string) => {
+  return prisma.question.update({
+    where: { id: questionId },
+    data: {
+      isDeleted: false,
+      deletedAt: null,
+    },
+  });
+};
+
+export const deleteQuestionPermanently = async (questionId: string) => {
+  await prisma.reviewComment.deleteMany({
+    where: { questionId },
+  });
+  await prisma.questionRevision.deleteMany({
+    where: { questionId },
+  });
+  await prisma.answer.deleteMany({
+    where: { questionId },
+  });
   return prisma.question.delete({
     where: { id: questionId },
   });
+};
+
+export const deleteQuizPermanently = async (quizId: string) => {
+  const attempts = await prisma.attempt.findMany({
+    where: { quizId },
+  });
+  const attemptIds = attempts.map(a => a.id);
+  await prisma.answer.deleteMany({
+    where: { attemptId: { in: attemptIds } },
+  });
+  await prisma.attempt.deleteMany({
+    where: { quizId },
+  });
+
+  const questions = await prisma.question.findMany({
+    where: { quizId },
+  });
+  const questionIds = questions.map(q => q.id);
+  await prisma.reviewComment.deleteMany({
+    where: { questionId: { in: questionIds } },
+  });
+  await prisma.questionRevision.deleteMany({
+    where: { questionId: { in: questionIds } },
+  });
+  await prisma.question.deleteMany({
+    where: { quizId },
+  });
+
+  await prisma.section.deleteMany({
+    where: { quizId },
+  });
+
+  return prisma.quiz.delete({
+    where: { id: quizId },
+  });
+};
+
+export const getTrashItems = async () => {
+  const quizzes = await prisma.quiz.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+  const questions = await prisma.question.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+  return { quizzes, questions };
 };
 
 export const moveQuizToTrash = async (quizId: string) => {

@@ -23,6 +23,10 @@ import {
   updateStatus,
   addComment,
   getComments,
+  getTrash,
+  restoreQuestionController,
+  deleteQuestionPermanentlyController,
+  deleteQuizPermanentlyController,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -115,6 +119,26 @@ router.post(
 router.get(
   "/question/:questionId/comments",
   getComments
+);
+
+router.get(
+  "/trash/items",
+  getTrash
+);
+
+router.patch(
+  "/question/:questionId/restore-trash",
+  restoreQuestionController
+);
+
+router.delete(
+  "/question/:questionId/permanent",
+  deleteQuestionPermanentlyController
+);
+
+router.delete(
+  "/:quizId/permanent",
+  deleteQuizPermanentlyController
 );
 
 router.patch(

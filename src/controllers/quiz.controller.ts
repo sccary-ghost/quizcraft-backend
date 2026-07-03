@@ -22,10 +22,13 @@ import {
 } from "../services/quiz.service";
 
 import prisma from "../utils/prisma";
+import { logAuditAction } from "../utils/auditLogger";
 export const create = async (req: Request, res: Response) => {
   try {
     const { title, description, duration, sections, schedulingData } = req.body;
     const result = await createQuiz(title, description, duration, sections, schedulingData);
+    const quizId = result.quiz?.id || (result as any).id;
+    await logAuditAction(req, "Test Created", quizId);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -62,6 +65,8 @@ export const add = async (req: Request, res: Response) => {
       topic,
       sectionId
     );
+    const createdQuestionId = result.question?.id || (result as any).id;
+    await logAuditAction(req, "Question Created", createdQuestionId);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -138,6 +143,7 @@ export const update = async (req: Request, res: Response) => {
       req.body.chapter,
       req.body.topic
     );
+    await logAuditAction(req, "Question Edited", questionId);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -159,6 +165,7 @@ export const restoreVersion = async (req: Request, res: Response) => {
     const questionId = req.params.questionId as string;
     const versionId = req.params.versionId as string;
     const restored = await restoreQuestionRevision(questionId, versionId);
+    await logAuditAction(req, "Question Restored", questionId);
     res.json({ message: "Version restored successfully", question: restored });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -167,7 +174,9 @@ export const restoreVersion = async (req: Request, res: Response) => {
 
 export const remove = async (req: Request, res: Response) => {
   try {
-    await deleteQuestion(req.params.questionId as string);
+    const questionId = req.params.questionId as string;
+    await deleteQuestion(questionId);
+    await logAuditAction(req, "Question Deleted", questionId);
     res.json({ message: "Question deleted successfully" });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -175,8 +184,9 @@ export const remove = async (req: Request, res: Response) => {
 };
 export const trashQuiz = async (req: Request, res: Response) => {
   try {
-
-    await moveQuizToTrash(req.params.quizId as string);
+    const quizId = req.params.quizId as string;
+    await moveQuizToTrash(quizId);
+    await logAuditAction(req, "Test Deleted", quizId);
     res.json({
       message: "Quiz moved to Trash successfully",
     });
@@ -191,8 +201,9 @@ export const restoreQuizController = async (
   res: Response
 ) => {
   try {
-    await restoreQuiz(req.params.quizId as string);
-
+    const quizId = req.params.quizId as string;
+    await restoreQuiz(quizId);
+    await logAuditAction(req, "Test Restored", quizId);
     res.json({
       message: "Quiz restored successfully",
     });
@@ -336,6 +347,10 @@ export const updateQuizController = async (req: Request, res: Response) => {
       sections,
       schedulingData
     );
+    await logAuditAction(req, "Test Updated", quizId);
+    if (req.body.status === "Published" || (result as any).status === "Published") {
+      await logAuditAction(req, "Test Published", quizId);
+    }
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -361,6 +376,12 @@ export const updateStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Status parameter is required" });
     }
     const result = await updateQuestionStatus(questionId, status);
+    const logAction = status === "Published"
+      ? "Question Published"
+      : status === "Approved"
+      ? "Question Approved"
+      : `Question status updated to ${status}`;
+    await logAuditAction(req, logAction, questionId);
     res.json({ message: "Status updated successfully", question: result });
   } catch (error: any) {
     res.status(400).json({ message: error.message });

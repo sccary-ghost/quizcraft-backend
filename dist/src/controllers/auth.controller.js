@@ -3,11 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMe = exports.login = exports.register = exports.sendOtp = void 0;
+exports.getMe = exports.logout = exports.login = exports.register = exports.sendOtp = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auth_service_1 = require("../services/auth.service");
+const auditLogger_1 = require("../utils/auditLogger");
 // Helper to hash OTP safely
 const hashOtp = (otp) => {
     return crypto_1.default.createHash("sha256").update(otp).digest("hex");
@@ -148,6 +149,11 @@ const register = async (req, res) => {
         const result = await (0, auth_service_1.registerUser)(name, email, password, mobileNumber);
         // Clean up verification
         await prisma_1.default.otpVerification.delete({ where: { mobileNumber } });
+        // Log registration action
+        await (0, auditLogger_1.logAuditAction)(req, "Candidate Registered", result.user.id, {
+            userId: result.user.id,
+            userName: result.user.email,
+        });
         // Auto-login upon registration
         const token = jsonwebtoken_1.default.sign({
             userId: result.user.id,
@@ -173,6 +179,11 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         const result = await (0, auth_service_1.loginUser)(email, password);
+        // Log login action
+        await (0, auditLogger_1.logAuditAction)(req, "Login", result.user.id, {
+            userId: result.user.id,
+            userName: result.user.email,
+        });
         res.json(result);
     }
     catch (error) {
@@ -182,6 +193,16 @@ const login = async (req, res) => {
     }
 };
 exports.login = login;
+const logout = async (req, res) => {
+    try {
+        await (0, auditLogger_1.logAuditAction)(req, "Logout");
+        res.json({ message: "Logout successful" });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.logout = logout;
 // Get profile controller (me)
 const getMe = async (req, res) => {
     res.json({

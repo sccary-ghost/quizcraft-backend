@@ -1,7 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.editCandidate = exports.candidateAttempts = exports.candidateProfile = exports.listCandidates = void 0;
 const user_service_1 = require("../services/user.service");
+const prisma_1 = __importDefault(require("../utils/prisma"));
+const auditLogger_1 = require("../utils/auditLogger");
 /**
  * Controller to fetch list of candidates with search, filter, and sorting.
  */
@@ -59,6 +64,9 @@ const editCandidate = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, mobileNumber, isActive, profilePhoto } = req.body;
+        const current = await prisma_1.default.user.findUnique({
+            where: { id: id },
+        });
         const updated = await (0, user_service_1.updateCandidateDetails)(id, {
             name,
             email,
@@ -66,6 +74,13 @@ const editCandidate = async (req, res) => {
             isActive,
             profilePhoto,
         });
+        if (isActive !== undefined && current && current.isActive !== isActive) {
+            const action = isActive ? "Candidate Activated" : "Candidate Deactivated";
+            await (0, auditLogger_1.logAuditAction)(req, action, id);
+        }
+        else {
+            await (0, auditLogger_1.logAuditAction)(req, "Candidate Profile Updated", id);
+        }
         res.json({
             message: "Candidate updated successfully",
             candidate: updated,

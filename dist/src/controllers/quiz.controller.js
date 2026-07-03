@@ -6,10 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const auditLogger_1 = require("../utils/auditLogger");
 const create = async (req, res) => {
     try {
         const { title, description, duration, sections, schedulingData } = req.body;
         const result = await (0, quiz_service_1.createQuiz)(title, description, duration, sections, schedulingData);
+        const quizId = result.quiz?.id || result.id;
+        await (0, auditLogger_1.logAuditAction)(req, "Test Created", quizId);
         res.json(result);
     }
     catch (error) {
@@ -22,6 +25,8 @@ const add = async (req, res) => {
         const quizId = req.params.quizId;
         const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, } = req.body;
         const result = await (0, quiz_service_1.addQuestion)(quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId);
+        const createdQuestionId = result.question?.id || result.id;
+        await (0, auditLogger_1.logAuditAction)(req, "Question Created", createdQuestionId);
         res.json(result);
     }
     catch (error) {
@@ -91,6 +96,7 @@ const update = async (req, res) => {
     try {
         const questionId = req.params.questionId;
         const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer, req.body.explanation, req.body.subject, req.body.chapter, req.body.topic);
+        await (0, auditLogger_1.logAuditAction)(req, "Question Edited", questionId);
         res.json(result);
     }
     catch (error) {
@@ -114,6 +120,7 @@ const restoreVersion = async (req, res) => {
         const questionId = req.params.questionId;
         const versionId = req.params.versionId;
         const restored = await (0, quiz_service_1.restoreQuestionRevision)(questionId, versionId);
+        await (0, auditLogger_1.logAuditAction)(req, "Question Restored", questionId);
         res.json({ message: "Version restored successfully", question: restored });
     }
     catch (error) {
@@ -123,7 +130,9 @@ const restoreVersion = async (req, res) => {
 exports.restoreVersion = restoreVersion;
 const remove = async (req, res) => {
     try {
-        await (0, quiz_service_1.deleteQuestion)(req.params.questionId);
+        const questionId = req.params.questionId;
+        await (0, quiz_service_1.deleteQuestion)(questionId);
+        await (0, auditLogger_1.logAuditAction)(req, "Question Deleted", questionId);
         res.json({ message: "Question deleted successfully" });
     }
     catch (error) {
@@ -133,7 +142,9 @@ const remove = async (req, res) => {
 exports.remove = remove;
 const trashQuiz = async (req, res) => {
     try {
-        await (0, quiz_service_1.moveQuizToTrash)(req.params.quizId);
+        const quizId = req.params.quizId;
+        await (0, quiz_service_1.moveQuizToTrash)(quizId);
+        await (0, auditLogger_1.logAuditAction)(req, "Test Deleted", quizId);
         res.json({
             message: "Quiz moved to Trash successfully",
         });
@@ -147,7 +158,9 @@ const trashQuiz = async (req, res) => {
 exports.trashQuiz = trashQuiz;
 const restoreQuizController = async (req, res) => {
     try {
-        await (0, quiz_service_1.restoreQuiz)(req.params.quizId);
+        const quizId = req.params.quizId;
+        await (0, quiz_service_1.restoreQuiz)(quizId);
+        await (0, auditLogger_1.logAuditAction)(req, "Test Restored", quizId);
         res.json({
             message: "Quiz restored successfully",
         });
@@ -272,6 +285,10 @@ const updateQuizController = async (req, res) => {
         const quizId = req.params.quizId;
         const { title, description, duration, sections, schedulingData } = req.body;
         const result = await (0, quiz_service_1.updateQuiz)(quizId, title, description, duration, sections, schedulingData);
+        await (0, auditLogger_1.logAuditAction)(req, "Test Updated", quizId);
+        if (req.body.status === "Published" || result.status === "Published") {
+            await (0, auditLogger_1.logAuditAction)(req, "Test Published", quizId);
+        }
         res.json(result);
     }
     catch (error) {
@@ -299,6 +316,12 @@ const updateStatus = async (req, res) => {
             return res.status(400).json({ message: "Status parameter is required" });
         }
         const result = await (0, quiz_service_1.updateQuestionStatus)(questionId, status);
+        const logAction = status === "Published"
+            ? "Question Published"
+            : status === "Approved"
+                ? "Question Approved"
+                : `Question status updated to ${status}`;
+        await (0, auditLogger_1.logAuditAction)(req, logAction, questionId);
         res.json({ message: "Status updated successfully", question: result });
     }
     catch (error) {

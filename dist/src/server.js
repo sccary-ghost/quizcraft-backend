@@ -7,6 +7,7 @@ const quiz_routes_1 = __importDefault(require("./routes/quiz.routes"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const questions_routes_1 = __importDefault(require("./routes/questions.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
+const audit_routes_1 = __importDefault(require("./routes/audit.routes"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -25,6 +26,7 @@ app.use("/auth", auth_routes_1.default);
 app.use("/quiz", quiz_routes_1.default);
 app.use("/questions", questions_routes_1.default);
 app.use("/users", user_routes_1.default);
+app.use("/audit", audit_routes_1.default);
 app.get("/", (req, res) => {
     res.send("QuizCraft Backend Running 🚀");
 });

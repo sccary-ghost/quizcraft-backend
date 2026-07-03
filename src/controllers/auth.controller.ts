@@ -6,6 +6,7 @@ import {
   registerUser,
   loginUser,
 } from "../services/auth.service";
+import { logAuditAction } from "../utils/auditLogger";
 
 // Helper to hash OTP safely
 const hashOtp = (otp: string): string => {
@@ -162,6 +163,12 @@ export const register = async (req: Request, res: Response) => {
     // Clean up verification
     await prisma.otpVerification.delete({ where: { mobileNumber } });
 
+    // Log registration action
+    await logAuditAction(req, "Candidate Registered", result.user.id, {
+      userId: result.user.id,
+      userName: result.user.email,
+    });
+
     // Auto-login upon registration
     const token = jwt.sign(
       {
@@ -193,11 +200,26 @@ export const login = async (req: Request, res: Response) => {
 
     const result = await loginUser(email, password);
 
+    // Log login action
+    await logAuditAction(req, "Login", result.user.id, {
+      userId: result.user.id,
+      userName: result.user.email,
+    });
+
     res.json(result);
   } catch (error: any) {
     res.status(400).json({
       message: error.message,
     });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    await logAuditAction(req, "Logout");
+    res.json({ message: "Logout successful" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
   }
 };
 

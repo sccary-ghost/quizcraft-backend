@@ -5,6 +5,8 @@ import {
   getCandidateAttemptsHistory,
   updateCandidateDetails,
 } from "../services/user.service";
+import prisma from "../utils/prisma";
+import { logAuditAction } from "../utils/auditLogger";
 
 /**
  * Controller to fetch list of candidates with search, filter, and sorting.
@@ -62,6 +64,10 @@ export const editCandidate = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, email, mobileNumber, isActive, profilePhoto } = req.body;
 
+    const current = await prisma.user.findUnique({
+      where: { id: id as string },
+    });
+
     const updated = await updateCandidateDetails(id as string, {
       name,
       email,
@@ -69,6 +75,13 @@ export const editCandidate = async (req: Request, res: Response) => {
       isActive,
       profilePhoto,
     });
+
+    if (isActive !== undefined && current && current.isActive !== isActive) {
+      const action = isActive ? "Candidate Activated" : "Candidate Deactivated";
+      await logAuditAction(req, action, id as string);
+    } else {
+      await logAuditAction(req, "Candidate Profile Updated", id as string);
+    }
 
     res.json({
       message: "Candidate updated successfully",

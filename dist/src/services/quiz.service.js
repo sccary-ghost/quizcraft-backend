@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.deleteQuestion = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
+exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const updateQuizStatuses = async () => {
     try {
@@ -121,17 +121,22 @@ const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD,
             subject: newQuestion.subject,
             chapter: newQuestion.chapter,
             topic: newQuestion.topic,
+            status: newQuestion.status,
         },
     });
     return { message: "Question added successfully", question: newQuestion };
 };
 exports.addQuestion = addQuestion;
-const getQuizById = async (quizId) => {
+const getQuizById = async (quizId, isAdmin = false) => {
     await (0, exports.updateQuizStatuses)();
-    return prisma_1.default.quiz.findUnique({
+    const quiz = await prisma_1.default.quiz.findUnique({
         where: { id: quizId },
         include: {
-            questions: true,
+            questions: {
+                orderBy: {
+                    createdAt: "asc"
+                }
+            },
             sections: {
                 orderBy: {
                     order: "asc"
@@ -139,6 +144,13 @@ const getQuizById = async (quizId) => {
             }
         },
     });
+    if (!quiz)
+        return null;
+    // Candidate cbt test attempts should only render Published questions
+    if (!isAdmin) {
+        quiz.questions = quiz.questions.filter((q) => q.status === "Published");
+    }
+    return quiz;
 };
 exports.getQuizById = getQuizById;
 const getAllQuizzes = async () => {
@@ -289,7 +301,7 @@ const getUserHistory = async (userId) => {
     });
 };
 exports.getUserHistory = getUserHistory;
-const updateQuestion = async (questionId, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic) => {
+const updateQuestion = async (questionId, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, status) => {
     // Fetch current question
     const current = await prisma_1.default.question.findUnique({
         where: { id: questionId },
@@ -315,11 +327,13 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
                 subject: current.subject,
                 chapter: current.chapter,
                 topic: current.topic,
+                status: current.status,
                 createdAt: current.createdAt,
             },
         });
     }
     const nextVersion = current.version + 1;
+    const newStatus = status !== undefined ? status : current.status;
     // Update active question
     const updated = await prisma_1.default.question.update({
         where: { id: questionId },
@@ -334,6 +348,7 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
             subject: subject !== undefined ? subject : current.subject,
             chapter: chapter !== undefined ? chapter : current.chapter,
             topic: topic !== undefined ? topic : current.topic,
+            status: newStatus,
             version: nextVersion,
         },
     });
@@ -352,6 +367,7 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
             subject: updated.subject,
             chapter: updated.chapter,
             topic: updated.topic,
+            status: updated.status,
         },
     });
     return updated;
@@ -400,6 +416,7 @@ const restoreQuestionRevision = async (questionId, revisionId) => {
             subject: revision.subject,
             chapter: revision.chapter,
             topic: revision.topic,
+            status: revision.status,
             version: nextVersion,
         },
     });
@@ -418,11 +435,52 @@ const restoreQuestionRevision = async (questionId, revisionId) => {
             subject: restored.subject,
             chapter: restored.chapter,
             topic: restored.topic,
+            status: restored.status,
         },
     });
     return restored;
 };
 exports.restoreQuestionRevision = restoreQuestionRevision;
+/**
+ * Update a question's status specifically, and log it in history.
+ */
+const updateQuestionStatus = async (questionId, status) => {
+    const current = await prisma_1.default.question.findUnique({
+        where: { id: questionId },
+    });
+    if (!current)
+        throw new Error("Question not found");
+    return (0, exports.updateQuestion)(questionId, current.question, current.optionA, current.optionB, current.optionC, current.optionD, current.correctAnswer, current.explanation, current.subject, current.chapter, current.topic, status);
+};
+exports.updateQuestionStatus = updateQuestionStatus;
+/**
+ * Add a comment from a reviewer.
+ */
+const addReviewComment = async (questionId, comment, authorName = "Reviewer") => {
+    const question = await prisma_1.default.question.findUnique({
+        where: { id: questionId },
+    });
+    if (!question)
+        throw new Error("Question not found");
+    return prisma_1.default.reviewComment.create({
+        data: {
+            questionId,
+            comment,
+            authorName,
+        },
+    });
+};
+exports.addReviewComment = addReviewComment;
+/**
+ * Retrieve the review comments thread for a question.
+ */
+const getReviewCommentsList = async (questionId) => {
+    return prisma_1.default.reviewComment.findMany({
+        where: { questionId },
+        orderBy: { createdAt: "asc" },
+    });
+};
+exports.getReviewCommentsList = getReviewCommentsList;
 const deleteQuestion = async (questionId) => {
     return prisma_1.default.question.delete({
         where: { id: questionId },

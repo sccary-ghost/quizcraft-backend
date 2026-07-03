@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const create = async (req, res) => {
@@ -42,7 +42,8 @@ exports.getAll = getAll;
 const getQuiz = async (req, res) => {
     try {
         const quizId = req.params.quizId;
-        const quiz = await (0, quiz_service_1.getQuizById)(quizId);
+        const isAdmin = req.query.admin === "true";
+        const quiz = await (0, quiz_service_1.getQuizById)(quizId, isAdmin);
         res.json(quiz);
     }
     catch (error) {
@@ -290,3 +291,45 @@ const startAttempt = async (req, res) => {
     }
 };
 exports.startAttempt = startAttempt;
+const updateStatus = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const status = req.body.status;
+        if (!status) {
+            return res.status(400).json({ message: "Status parameter is required" });
+        }
+        const result = await (0, quiz_service_1.updateQuestionStatus)(questionId, status);
+        res.json({ message: "Status updated successfully", question: result });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.updateStatus = updateStatus;
+const addComment = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const comment = req.body.comment;
+        const authorName = req.body.authorName;
+        if (!comment) {
+            return res.status(400).json({ message: "Comment is required" });
+        }
+        const result = await (0, quiz_service_1.addReviewComment)(questionId, comment, authorName);
+        res.json({ message: "Comment added successfully", comment: result });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.addComment = addComment;
+const getComments = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const list = await (0, quiz_service_1.getReviewCommentsList)(questionId);
+        res.json(list);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.getComments = getComments;

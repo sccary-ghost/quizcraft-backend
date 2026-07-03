@@ -16,6 +16,9 @@ import {
   updateQuizStatuses,
   getQuestionVersionsList,
   restoreQuestionRevision,
+  updateQuestionStatus,
+  addReviewComment,
+  getReviewCommentsList,
 } from "../services/quiz.service";
 
 import prisma from "../utils/prisma";
@@ -77,7 +80,8 @@ export const getAll = async (req: Request, res: Response) => {
 export const getQuiz = async (req: Request, res: Response) => {
   try {
     const quizId = req.params.quizId as string;
-    const quiz = await getQuizById(quizId);
+    const isAdmin = req.query.admin === "true";
+    const quiz = await getQuizById(quizId, isAdmin);
     res.json(quiz);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -344,6 +348,45 @@ export const startAttempt = async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const result = await startQuizAttempt(userId, quizId);
     res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const status = req.body.status as string;
+    if (!status) {
+      return res.status(400).json({ message: "Status parameter is required" });
+    }
+    const result = await updateQuestionStatus(questionId, status);
+    res.json({ message: "Status updated successfully", question: result });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const addComment = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const comment = req.body.comment as string;
+    const authorName = req.body.authorName as string | undefined;
+    if (!comment) {
+      return res.status(400).json({ message: "Comment is required" });
+    }
+    const result = await addReviewComment(questionId, comment, authorName);
+    res.json({ message: "Comment added successfully", comment: result });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getComments = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const list = await getReviewCommentsList(questionId);
+    res.json(list);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

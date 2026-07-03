@@ -20,6 +20,9 @@ import {
   startAttempt,
   getVersions,
   restoreVersion,
+  updateStatus,
+  addComment,
+  getComments,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -97,6 +100,21 @@ router.get(
 router.post(
   "/question/:questionId/versions/:versionId/restore",
   restoreVersion
+);
+
+router.patch(
+  "/question/:questionId/status",
+  updateStatus
+);
+
+router.post(
+  "/question/:questionId/comments",
+  addComment
+);
+
+router.get(
+  "/question/:questionId/comments",
+  getComments
 );
 
 router.patch(

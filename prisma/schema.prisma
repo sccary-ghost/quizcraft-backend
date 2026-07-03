@@ -8,12 +8,25 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  name      String
-  email     String    @unique
-  password  String
-  createdAt DateTime  @default(now())
-  attempts  Attempt[]
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  password     String
+  mobileNumber String?   @unique
+  isActive     Boolean   @default(true)
+  profilePhoto String?
+  createdAt    DateTime  @default(now())
+  attempts     Attempt[]
+}
+
+model OtpVerification {
+  id              String   @id @default(cuid())
+  mobileNumber    String   @unique
+  otpHash         String
+  expiresAt       DateTime
+  attempts        Int      @default(0)
+  resendCount     Int      @default(0)
+  lastRequestedAt DateTime @default(now())
 }
 
 model Quiz {

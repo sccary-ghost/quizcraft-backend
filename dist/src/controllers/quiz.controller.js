@@ -187,6 +187,17 @@ const getAdminStats = async (req, res) => {
         const trash = await prisma_1.default.quiz.count({
             where: { isDeleted: true },
         });
+        // Candidate Stats
+        const totalCandidates = users;
+        const activeCandidates = await prisma_1.default.user.count({
+            where: { isActive: true },
+        });
+        const inactiveCandidates = await prisma_1.default.user.count({
+            where: { isActive: false },
+        });
+        const totalTestAttempts = await prisma_1.default.attempt.count({
+            where: { completed: true },
+        });
         res.json({
             totalQuizzes,
             draftQuizzes,
@@ -199,6 +210,10 @@ const getAdminStats = async (req, res) => {
             folders,
             users,
             trash,
+            totalCandidates,
+            activeCandidates,
+            inactiveCandidates,
+            totalTestAttempts,
         });
     }
     catch (error) {

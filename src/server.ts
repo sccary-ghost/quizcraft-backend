@@ -1,6 +1,7 @@
 import quizRoutes from "./routes/quiz.routes";
 import authRoutes from "./routes/auth.routes";
 import questionsRoutes from "./routes/questions.routes";
+import userRoutes from "./routes/user.routes";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -23,6 +24,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/auth", authRoutes);
 app.use("/quiz", quizRoutes);
 app.use("/questions", questionsRoutes);
+app.use("/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("QuizCraft Backend Running 🚀");

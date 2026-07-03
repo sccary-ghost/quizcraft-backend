@@ -495,3 +495,142 @@ export const importBackup = async (req: Request, res: Response) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+export const exportQuizReportCSV = async (req: Request, res: Response) => {
+  try {
+    const quizId = req.params.quizId as string;
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        attempts: {
+          include: {
+            user: true,
+          },
+          orderBy: { submittedAt: "desc" },
+        },
+      },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    const csvRows = [];
+    csvRows.push(`"Quiz Performance Report"`);
+    csvRows.push(`"Quiz Title","${quiz.title.replace(/"/g, '""')}"`);
+    csvRows.push(`"Duration","${quiz.duration} minutes"`);
+    csvRows.push(`"Exported At","${new Date().toLocaleString()}"`);
+    csvRows.push("");
+
+    csvRows.push(`"Candidate Name","Email","Mobile Number","Score","Percentage (%)","Submitted At","Status"`);
+
+    for (const att of quiz.attempts) {
+      const name = att.user.name || "N/A";
+      const email = att.user.email || "N/A";
+      const mobile = att.user.mobileNumber || "N/A";
+      const score = att.score;
+      const percentage = att.percentage.toFixed(2);
+      const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+      const status = att.completed ? "Completed" : "Ongoing";
+
+      csvRows.push(`"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${mobile.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"`);
+    }
+
+    await logAuditAction(req, "Test Report Exported (CSV)", quizId);
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.csv`);
+    res.send(csvRows.join("\n"));
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const exportQuizReportExcel = async (req: Request, res: Response) => {
+  try {
+    const quizId = req.params.quizId as string;
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        attempts: {
+          include: {
+            user: true,
+          },
+          orderBy: { submittedAt: "desc" },
+        },
+      },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+        <style>
+          table { border-collapse: collapse; }
+          th { background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; }
+          td { border: 1px solid #cbd5e1; padding: 6px; }
+        </style>
+      </head>
+      <body>
+        <h2>Quiz Performance Report</h2>
+        <p><strong>Quiz Title:</strong> ${quiz.title}</p>
+        <p><strong>Duration:</strong> ${quiz.duration} minutes</p>
+        <p><strong>Exported At:</strong> ${new Date().toLocaleString()}</p>
+        <br/>
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate Name</th>
+              <th>Email</th>
+              <th>Mobile Number</th>
+              <th>Score</th>
+              <th>Percentage (%)</th>
+              <th>Submitted At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for (const att of quiz.attempts) {
+      const name = att.user.name || "N/A";
+      const email = att.user.email || "N/A";
+      const mobile = att.user.mobileNumber || "N/A";
+      const score = att.score;
+      const percentage = att.percentage.toFixed(2);
+      const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+      const status = att.completed ? "Completed" : "Ongoing";
+
+      html += `
+        <tr>
+          <td>${name}</td>
+          <td>${email}</td>
+          <td>${mobile}</td>
+          <td>${score}</td>
+          <td>${percentage}</td>
+          <td>${date}</td>
+          <td>${status}</td>
+        </tr>
+      `;
+    }
+
+    html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    await logAuditAction(req, "Test Report Exported (Excel)", quizId);
+
+    res.setHeader("Content-Type", "application/vnd.ms-excel");
+    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.xls`);
+    res.send(html);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.editCandidate = exports.candidateAttempts = exports.candidateProfile = exports.listCandidates = void 0;
+exports.exportUserReportExcel = exports.exportUserReportCSV = exports.editCandidate = exports.candidateAttempts = exports.candidateProfile = exports.listCandidates = void 0;
 const user_service_1 = require("../services/user.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
@@ -93,3 +93,131 @@ const editCandidate = async (req, res) => {
     }
 };
 exports.editCandidate = editCandidate;
+const exportUserReportCSV = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await prisma_1.default.user.findUnique({
+            where: { id: userId },
+            include: {
+                attempts: {
+                    include: {
+                        quiz: true,
+                    },
+                    orderBy: { submittedAt: "desc" },
+                },
+            },
+        });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        const fullName = user.name || "N/A";
+        const emailStr = user.email || "N/A";
+        const mobileStr = user.mobileNumber || "N/A";
+        const csvRows = [];
+        csvRows.push(`"Candidate Performance Report"`);
+        csvRows.push(`"Full Name","${fullName.replace(/"/g, '""')}"`);
+        csvRows.push(`"Email","${emailStr.replace(/"/g, '""')}"`);
+        csvRows.push(`"Mobile Number","${mobileStr.replace(/"/g, '""')}"`);
+        csvRows.push(`"Registration Date","${new Date(user.createdAt).toLocaleDateString()}"`);
+        csvRows.push(`"Account Status","${user.isActive ? "Active" : "Inactive"}"`);
+        csvRows.push(`"Exported At","${new Date().toLocaleString()}"`);
+        csvRows.push("");
+        csvRows.push(`"Test Paper","Score","Percentage (%)","Submitted At","Status"`);
+        for (const att of user.attempts) {
+            const quizTitle = att.quiz?.title || "N/A";
+            const score = att.score;
+            const percentage = att.percentage.toFixed(2);
+            const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+            const status = att.completed ? "Completed" : "Ongoing";
+            csvRows.push(`"${quizTitle.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"`);
+        }
+        await (0, auditLogger_1.logAuditAction)(req, "Candidate Report Exported (CSV)", userId);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename=candidate_report_${userId}_${Date.now()}.csv`);
+        res.send(csvRows.join("\n"));
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.exportUserReportCSV = exportUserReportCSV;
+const exportUserReportExcel = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await prisma_1.default.user.findUnique({
+            where: { id: userId },
+            include: {
+                attempts: {
+                    include: {
+                        quiz: true,
+                    },
+                    orderBy: { submittedAt: "desc" },
+                },
+            },
+        });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+        <style>
+          table { border-collapse: collapse; }
+          th { background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; }
+          td { border: 1px solid #cbd5e1; padding: 6px; }
+        </style>
+      </head>
+      <body>
+        <h2>Candidate Performance Report</h2>
+        <p><strong>Full Name:</strong> ${user.name || "N/A"}</p>
+        <p><strong>Email:</strong> ${user.email || "N/A"}</p>
+        <p><strong>Mobile Number:</strong> ${user.mobileNumber || "N/A"}</p>
+        <p><strong>Registration Date:</strong> ${new Date(user.createdAt).toLocaleDateString()}</p>
+        <p><strong>Account Status:</strong> ${user.isActive ? "Active" : "Inactive"}</p>
+        <p><strong>Exported At:</strong> ${new Date().toLocaleString()}</p>
+        <br/>
+        <table>
+          <thead>
+            <tr>
+              <th>Test Paper</th>
+              <th>Score</th>
+              <th>Percentage (%)</th>
+              <th>Submitted At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+        for (const att of user.attempts) {
+            const quizTitle = att.quiz?.title || "N/A";
+            const score = att.score;
+            const percentage = att.percentage.toFixed(2);
+            const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+            const status = att.completed ? "Completed" : "Ongoing";
+            html += `
+        <tr>
+          <td>${quizTitle}</td>
+          <td>${score}</td>
+          <td>${percentage}</td>
+          <td>${date}</td>
+          <td>${status}</td>
+        </tr>
+      `;
+        }
+        html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+        await (0, auditLogger_1.logAuditAction)(req, "Candidate Report Exported (Excel)", userId);
+        res.setHeader("Content-Type", "application/vnd.ms-excel");
+        res.setHeader("Content-Disposition", `attachment; filename=candidate_report_${userId}_${Date.now()}.xls`);
+        res.send(html);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.exportUserReportExcel = exportUserReportExcel;

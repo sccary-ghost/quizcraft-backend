@@ -16,6 +16,8 @@ import {
   restoreQuizController,
   getAdminStats,
   uploadImageController,
+  updateQuizController,
+  startAttempt,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -38,6 +40,10 @@ router.get("/admin/stats", getAdminStats);
 router.post("/upload-image", upload.single("image"), uploadImageController);
 
 router.post("/create", create);
+
+router.put("/:quizId", updateQuizController);
+
+router.post("/:quizId/start", authenticate, startAttempt);
 
 router.post(
   "/:quizId/questions",

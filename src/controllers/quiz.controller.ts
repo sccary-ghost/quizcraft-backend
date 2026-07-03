@@ -11,13 +11,16 @@ import {
   deleteQuestion,
   moveQuizToTrash,
   restoreQuiz,
+  updateQuiz,
+  startQuizAttempt,
+  updateQuizStatuses,
 } from "../services/quiz.service";
 
 import prisma from "../utils/prisma"; // Ye line add karo!
 export const create = async (req: Request, res: Response) => {
   try {
-    const { title, description, duration } = req.body;
-    const result = await createQuiz(title, description, duration);
+    const { title, description, duration, sections, schedulingData } = req.body;
+    const result = await createQuiz(title, description, duration, sections, schedulingData);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -38,6 +41,7 @@ export const add = async (req: Request, res: Response) => {
       subject,
       chapter,
       topic,
+      sectionId,
     } = req.body;
     const result = await addQuestion(
       quizId,
@@ -50,7 +54,8 @@ export const add = async (req: Request, res: Response) => {
       explanation,
       subject,
       chapter,
-      topic
+      topic,
+      sectionId
     );
     res.json(result);
   } catch (error: any) {
@@ -186,8 +191,30 @@ export const getBankQuestions = async (req: Request, res: Response) => {
 
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
+    await updateQuizStatuses();
+
     const totalQuizzes = await prisma.quiz.count({
       where: { isDeleted: false },
+    });
+
+    const draftQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false, status: "Draft" },
+    });
+
+    const scheduledQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false, status: "Scheduled" },
+    });
+
+    const liveQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false, status: "Live" },
+    });
+
+    const completedQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false, status: "Completed" },
+    });
+
+    const archivedQuizzes = await prisma.quiz.count({
+      where: { isDeleted: false, status: "Archived" },
     });
 
     const questionBank = await prisma.question.count({
@@ -211,6 +238,11 @@ export const getAdminStats = async (req: Request, res: Response) => {
 
     res.json({
       totalQuizzes,
+      draftQuizzes,
+      scheduledQuizzes,
+      liveQuizzes,
+      completedQuizzes,
+      archivedQuizzes,
       questionBank,
       categories,
       folders,
@@ -242,5 +274,34 @@ export const uploadImageController = async (req: Request, res: Response) => {
     res.json({ url: imageUrl });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateQuizController = async (req: Request, res: Response) => {
+  try {
+    const quizId = req.params.quizId as string;
+    const { title, description, duration, sections, schedulingData } = req.body;
+    const result = await updateQuiz(
+      quizId,
+      title,
+      description,
+      duration,
+      sections,
+      schedulingData
+    );
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const startAttempt = async (req: Request, res: Response) => {
+  try {
+    const quizId = req.params.quizId as string;
+    const userId = (req as any).user.userId;
+    const result = await startQuizAttempt(userId, quizId);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
   }
 };

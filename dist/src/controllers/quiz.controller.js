@@ -1,0 +1,254 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+const quiz_service_1 = require("../services/quiz.service");
+const prisma_1 = __importDefault(require("../utils/prisma")); // Ye line add karo!
+const create = async (req, res) => {
+    try {
+        const { title, description, duration, sections, schedulingData } = req.body;
+        const result = await (0, quiz_service_1.createQuiz)(title, description, duration, sections, schedulingData);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.create = create;
+const add = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, } = req.body;
+        const result = await (0, quiz_service_1.addQuestion)(quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.add = add;
+const getAll = async (req, res) => {
+    try {
+        const quizzes = await (0, quiz_service_1.getAllQuizzes)();
+        res.json(quizzes);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.getAll = getAll;
+const getQuiz = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        const quiz = await (0, quiz_service_1.getQuizById)(quizId);
+        res.json(quiz);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.getQuiz = getQuiz;
+const submit = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        const { answers, questionTimes } = req.body;
+        const userId = req.user.userId;
+        // This must match the signature of the service function exactly
+        const result = await (0, quiz_service_1.submitQuiz)(userId, quizId, answers, questionTimes || {});
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.submit = submit;
+const getAttempt = async (req, res) => {
+    try {
+        const attemptId = req.params.attemptId;
+        const attempt = await (0, quiz_service_1.getAttemptById)(attemptId);
+        res.json(attempt);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.getAttempt = getAttempt;
+const history = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const attempts = await (0, quiz_service_1.getUserHistory)(userId);
+        res.json(attempts);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.history = history;
+const update = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.update = update;
+const remove = async (req, res) => {
+    try {
+        await (0, quiz_service_1.deleteQuestion)(req.params.questionId);
+        res.json({ message: "Question deleted successfully" });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.remove = remove;
+const trashQuiz = async (req, res) => {
+    try {
+        await (0, quiz_service_1.moveQuizToTrash)(req.params.quizId);
+        res.json({
+            message: "Quiz moved to Trash successfully",
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            message: error.message,
+        });
+    }
+};
+exports.trashQuiz = trashQuiz;
+const restoreQuizController = async (req, res) => {
+    try {
+        await (0, quiz_service_1.restoreQuiz)(req.params.quizId);
+        res.json({
+            message: "Quiz restored successfully",
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            message: error.message,
+        });
+    }
+};
+exports.restoreQuizController = restoreQuizController;
+const getBankQuestions = async (req, res) => {
+    try {
+        const { subject, chapter } = req.query;
+        const questions = await prisma_1.default.question.findMany({
+            where: {
+                isBank: true,
+                ...(subject && { subject: subject }),
+                ...(chapter && { chapter: chapter }),
+            },
+        });
+        res.json(questions);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getBankQuestions = getBankQuestions;
+const getAdminStats = async (req, res) => {
+    try {
+        await (0, quiz_service_1.updateQuizStatuses)();
+        const totalQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false },
+        });
+        const draftQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false, status: "Draft" },
+        });
+        const scheduledQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false, status: "Scheduled" },
+        });
+        const liveQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false, status: "Live" },
+        });
+        const completedQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false, status: "Completed" },
+        });
+        const archivedQuizzes = await prisma_1.default.quiz.count({
+            where: { isDeleted: false, status: "Archived" },
+        });
+        const questionBank = await prisma_1.default.question.count({
+            where: { isBank: true },
+        });
+        // Unique subjects as categories
+        const categoriesResult = await prisma_1.default.question.groupBy({
+            by: ["subject"],
+            where: { isBank: true, subject: { not: null } },
+        });
+        const categories = categoriesResult.length;
+        const folders = 0;
+        const users = await prisma_1.default.user.count();
+        const trash = await prisma_1.default.quiz.count({
+            where: { isDeleted: true },
+        });
+        res.json({
+            totalQuizzes,
+            draftQuizzes,
+            scheduledQuizzes,
+            liveQuizzes,
+            completedQuizzes,
+            archivedQuizzes,
+            questionBank,
+            categories,
+            folders,
+            users,
+            trash,
+        });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getAdminStats = getAdminStats;
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const uploadImageController = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+        const fileName = `${Date.now()}-${req.file.originalname.replace(/\s+/g, "_")}`;
+        const uploadsDir = path_1.default.join(__dirname, "../../uploads");
+        if (!fs_1.default.existsSync(uploadsDir)) {
+            fs_1.default.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const filePath = path_1.default.join(uploadsDir, fileName);
+        fs_1.default.writeFileSync(filePath, req.file.buffer);
+        const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
+        res.json({ url: imageUrl });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.uploadImageController = uploadImageController;
+const updateQuizController = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        const { title, description, duration, sections, schedulingData } = req.body;
+        const result = await (0, quiz_service_1.updateQuiz)(quizId, title, description, duration, sections, schedulingData);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.updateQuizController = updateQuizController;
+const startAttempt = async (req, res) => {
+    try {
+        const quizId = req.params.quizId;
+        const userId = req.user.userId;
+        const result = await (0, quiz_service_1.startQuizAttempt)(userId, quizId);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.startAttempt = startAttempt;

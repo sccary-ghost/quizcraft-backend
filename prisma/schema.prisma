@@ -17,21 +17,31 @@ model User {
 }
 
 model Quiz {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  duration    Int
-  isDeleted Boolean @default(false)
-  deletedAt DateTime?
-  updatedAt DateTime? @updatedAt
-  createdAt   DateTime   @default(now())
-  attempts    Attempt[]
-  questions   Question[]
+  id               String     @id @default(cuid())
+  title            String
+  description      String?
+  duration         Int
+  startDate        DateTime?
+  endDate          DateTime?
+  timezone         String?     @default("Asia/Kolkata")
+  status           String      @default("Draft")
+  resumeAllowed    Boolean     @default(true)
+  availabilityMode String      @default("IMMEDIATE")
+  hideUntilStart   Boolean     @default(false)
+  autoCloseAfterEnd Boolean    @default(false)
+  isDeleted        Boolean    @default(false)
+  deletedAt        DateTime?
+  updatedAt        DateTime?   @updatedAt
+  createdAt        DateTime   @default(now())
+  attempts         Attempt[]
+  questions        Question[]
+  sections         Section[]
 }
 
 model Question {
   id            String   @id @default(cuid())
   quizId        String?  // Optional banaya taaki question bina quiz ke bank mein reh sake
+  sectionId     String?  // Associated section
   question      String
   optionA       String
   optionB       String
@@ -46,15 +56,35 @@ model Question {
   createdAt     DateTime @default(now())
   answers       Answer[]
   quiz          Quiz?    @relation(fields: [quizId], references: [id])
+  section       Section? @relation(fields: [sectionId], references: [id])
+}
+
+model Section {
+  id            String     @id @default(cuid())
+  quizId        String
+  name          String
+  description   String?
+  instructions  String?
+  order         Int        @default(0)
+  marks         Float      @default(4.0)
+  negativeMarks Float      @default(1.0)
+  shuffleQuestions Boolean @default(false)
+  shuffleOptions   Boolean @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  quiz      Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questions Question[]
 }
 
 model Attempt {
   id          String   @id @default(cuid())
   userId      String
   quizId      String
-  score       Int
+  score       Float
   percentage  Float
   submittedAt DateTime @default(now())
+  completed   Boolean  @default(true)
   answers     Answer[]
   quiz        Quiz     @relation(fields: [quizId], references: [id])
   user        User     @relation(fields: [userId], references: [id])

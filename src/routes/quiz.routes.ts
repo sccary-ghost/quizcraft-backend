@@ -27,6 +27,8 @@ import {
   restoreQuestionController,
   deleteQuestionPermanentlyController,
   deleteQuizPermanentlyController,
+  exportBackup,
+  importBackup,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -139,6 +141,17 @@ router.delete(
 router.delete(
   "/:quizId/permanent",
   deleteQuizPermanentlyController
+);
+
+router.get(
+  "/backup/export",
+  exportBackup
+);
+
+router.post(
+  "/backup/import",
+  authenticate,
+  importBackup
 );
 
 router.patch(

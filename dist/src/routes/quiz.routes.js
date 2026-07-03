@@ -34,6 +34,8 @@ router.get("/trash/items", quiz_controller_1.getTrash);
 router.patch("/question/:questionId/restore-trash", quiz_controller_1.restoreQuestionController);
 router.delete("/question/:questionId/permanent", quiz_controller_1.deleteQuestionPermanentlyController);
 router.delete("/:quizId/permanent", quiz_controller_1.deleteQuizPermanentlyController);
+router.get("/backup/export", quiz_controller_1.exportBackup);
+router.post("/backup/import", auth_middleware_1.authenticate, quiz_controller_1.importBackup);
 router.patch("/:quizId/trash", quiz_controller_1.trashQuiz);
 router.patch("/:quizId/restore", quiz_controller_1.restoreQuizController);
 exports.default = router;

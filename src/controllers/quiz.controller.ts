@@ -23,6 +23,8 @@ import {
   restoreQuestion,
   deleteQuestionPermanently,
   deleteQuizPermanently,
+  exportDatabaseBackup,
+  importDatabaseBackup,
 } from "../services/quiz.service";
 
 import prisma from "../utils/prisma";
@@ -456,6 +458,39 @@ export const deleteQuizPermanentlyController = async (req: Request, res: Respons
     await deleteQuizPermanently(quizId);
     await logAuditAction(req, "Test Deleted Forever", quizId);
     res.json({ message: "Quiz permanently deleted successfully" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const exportBackup = async (req: Request, res: Response) => {
+  try {
+    const backupData = await exportDatabaseBackup();
+    await logAuditAction(req, "Backup Exported");
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename=quizcraft_backup_${Date.now()}.json`);
+    res.send(JSON.stringify(backupData, null, 2));
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const importBackup = async (req: Request, res: Response) => {
+  try {
+    const { backupData, strategy } = req.body;
+    if (!backupData) {
+      return res.status(400).json({ message: "backupData parameter is required" });
+    }
+    if (strategy !== "merge" && strategy !== "overwrite") {
+      return res.status(400).json({ message: "Invalid strategy. Must be 'merge' or 'overwrite'" });
+    }
+
+    const currentAdminId = (req as any).user?.userId;
+    await importDatabaseBackup(backupData, strategy, currentAdminId);
+
+    await logAuditAction(req, `Backup Restored (${strategy})`);
+
+    res.json({ message: `Database backup imported successfully using ${strategy} strategy` });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

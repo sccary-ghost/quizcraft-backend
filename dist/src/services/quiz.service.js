@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.getTrashItems = exports.deleteQuizPermanently = exports.deleteQuestionPermanently = exports.restoreQuestion = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
+exports.importDatabaseBackup = exports.exportDatabaseBackup = exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.getTrashItems = exports.deleteQuizPermanently = exports.deleteQuestionPermanently = exports.restoreQuestion = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const updateQuizStatuses = async () => {
     try {
@@ -674,3 +674,127 @@ const startQuizAttempt = async (userId, quizId) => {
     return { message: "Attempt started successfully", attemptId: attempt.id };
 };
 exports.startQuizAttempt = startQuizAttempt;
+const exportDatabaseBackup = async () => {
+    const users = await prisma_1.default.user.findMany();
+    const quizzes = await prisma_1.default.quiz.findMany();
+    const sections = await prisma_1.default.section.findMany();
+    const questions = await prisma_1.default.question.findMany();
+    const questionRevisions = await prisma_1.default.questionRevision.findMany();
+    const reviewComments = await prisma_1.default.reviewComment.findMany();
+    const attempts = await prisma_1.default.attempt.findMany();
+    const answers = await prisma_1.default.answer.findMany();
+    const auditLogs = await prisma_1.default.auditLog.findMany();
+    return {
+        users,
+        quizzes,
+        sections,
+        questions,
+        questionRevisions,
+        reviewComments,
+        attempts,
+        answers,
+        auditLogs,
+    };
+};
+exports.exportDatabaseBackup = exportDatabaseBackup;
+const importDatabaseBackup = async (backupData, strategy, currentAdminId) => {
+    const { users = [], quizzes = [], sections = [], questions = [], questionRevisions = [], reviewComments = [], attempts = [], answers = [], auditLogs = [], } = backupData;
+    const mapDates = (item) => {
+        const mapped = { ...item };
+        for (const key in mapped) {
+            if (typeof mapped[key] === "string" &&
+                /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(mapped[key])) {
+                mapped[key] = new Date(mapped[key]);
+            }
+        }
+        return mapped;
+    };
+    if (strategy === "overwrite") {
+        await prisma_1.default.$transaction(async (tx) => {
+            // 1. Answers
+            await tx.answer.deleteMany();
+            // 2. Attempts
+            await tx.attempt.deleteMany();
+            // 3. ReviewComments
+            await tx.reviewComment.deleteMany();
+            // 4. Revisions
+            await tx.questionRevision.deleteMany();
+            // 5. Questions
+            await tx.question.deleteMany();
+            // 6. Sections
+            await tx.section.deleteMany();
+            // 7. Quizzes
+            await tx.quiz.deleteMany();
+            // 8. AuditLogs
+            await tx.auditLog.deleteMany();
+            // 9. Users
+            await tx.user.deleteMany({
+                where: currentAdminId ? { id: { not: currentAdminId } } : {},
+            });
+            // Insert all
+            const usersToInsert = users
+                .filter((u) => u.id !== currentAdminId)
+                .map(mapDates);
+            if (usersToInsert.length > 0) {
+                await tx.user.createMany({ data: usersToInsert });
+            }
+            const quizzesToInsert = quizzes.map(mapDates);
+            if (quizzesToInsert.length > 0) {
+                await tx.quiz.createMany({ data: quizzesToInsert });
+            }
+            const sectionsToInsert = sections.map(mapDates);
+            if (sectionsToInsert.length > 0) {
+                await tx.section.createMany({ data: sectionsToInsert });
+            }
+            const questionsToInsert = questions.map(mapDates);
+            if (questionsToInsert.length > 0) {
+                await tx.question.createMany({ data: questionsToInsert });
+            }
+            const revisionsToInsert = questionRevisions.map(mapDates);
+            if (revisionsToInsert.length > 0) {
+                await tx.questionRevision.createMany({ data: revisionsToInsert });
+            }
+            const commentsToInsert = reviewComments.map(mapDates);
+            if (commentsToInsert.length > 0) {
+                await tx.reviewComment.createMany({ data: commentsToInsert });
+            }
+            const attemptsToInsert = attempts.map(mapDates);
+            if (attemptsToInsert.length > 0) {
+                await tx.attempt.createMany({ data: attemptsToInsert });
+            }
+            const answersToInsert = answers.map(mapDates);
+            if (answersToInsert.length > 0) {
+                await tx.answer.createMany({ data: answersToInsert });
+            }
+            const auditLogsToInsert = auditLogs.map(mapDates);
+            if (auditLogsToInsert.length > 0) {
+                await tx.auditLog.createMany({ data: auditLogsToInsert });
+            }
+        });
+    }
+    else {
+        // Merge strategy
+        const mergeModel = async (model, dataList) => {
+            for (const item of dataList) {
+                const exists = await prisma_1.default[model].findUnique({
+                    where: { id: item.id },
+                });
+                if (!exists) {
+                    await prisma_1.default[model].create({
+                        data: mapDates(item),
+                    });
+                }
+            }
+        };
+        await mergeModel("user", users);
+        await mergeModel("quiz", quizzes);
+        await mergeModel("section", sections);
+        await mergeModel("question", questions);
+        await mergeModel("questionRevision", questionRevisions);
+        await mergeModel("reviewComment", reviewComments);
+        await mergeModel("attempt", attempts);
+        await mergeModel("answer", answers);
+        await mergeModel("auditLog", auditLogs);
+    }
+};
+exports.importDatabaseBackup = importDatabaseBackup;

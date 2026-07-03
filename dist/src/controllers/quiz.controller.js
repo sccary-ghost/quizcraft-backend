@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.importBackup = exports.exportBackup = exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
@@ -403,3 +403,35 @@ const deleteQuizPermanentlyController = async (req, res) => {
     }
 };
 exports.deleteQuizPermanentlyController = deleteQuizPermanentlyController;
+const exportBackup = async (req, res) => {
+    try {
+        const backupData = await (0, quiz_service_1.exportDatabaseBackup)();
+        await (0, auditLogger_1.logAuditAction)(req, "Backup Exported");
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Content-Disposition", `attachment; filename=quizcraft_backup_${Date.now()}.json`);
+        res.send(JSON.stringify(backupData, null, 2));
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.exportBackup = exportBackup;
+const importBackup = async (req, res) => {
+    try {
+        const { backupData, strategy } = req.body;
+        if (!backupData) {
+            return res.status(400).json({ message: "backupData parameter is required" });
+        }
+        if (strategy !== "merge" && strategy !== "overwrite") {
+            return res.status(400).json({ message: "Invalid strategy. Must be 'merge' or 'overwrite'" });
+        }
+        const currentAdminId = req.user?.userId;
+        await (0, quiz_service_1.importDatabaseBackup)(backupData, strategy, currentAdminId);
+        await (0, auditLogger_1.logAuditAction)(req, `Backup Restored (${strategy})`);
+        res.json({ message: `Database backup imported successfully using ${strategy} strategy` });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.importBackup = importBackup;

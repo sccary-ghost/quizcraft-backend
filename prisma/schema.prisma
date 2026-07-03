@@ -66,10 +66,31 @@ model Question {
   chapter       String?  // Naya: Filter ke liye
   topic         String?  // Naya: Filter ke liye
   isBank        Boolean  @default(false) // Naya: Master bank identify karne ke liye
+  version       Int      @default(1)
   createdAt     DateTime @default(now())
   answers       Answer[]
+  revisions     QuestionRevision[]
   quiz          Quiz?    @relation(fields: [quizId], references: [id])
   section       Section? @relation(fields: [sectionId], references: [id])
+}
+
+model QuestionRevision {
+  id            String   @id @default(cuid())
+  questionId    String
+  version       Int
+  question      String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String
+  explanation   String?
+  subject       String?
+  chapter       String?
+  topic         String?
+  createdAt     DateTime @default(now())
+
+  questionRelation Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model Section {

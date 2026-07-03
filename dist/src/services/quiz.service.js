@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.deleteQuestion = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
+exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.deleteQuestion = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const updateQuizStatuses = async () => {
     try {
@@ -104,6 +104,23 @@ const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD,
             subject: subject || null,
             chapter: chapter || null,
             topic: topic || null,
+        },
+    });
+    // Create version 1 revision immediately
+    await prisma_1.default.questionRevision.create({
+        data: {
+            questionId: newQuestion.id,
+            version: 1,
+            question: newQuestion.question,
+            optionA: newQuestion.optionA,
+            optionB: newQuestion.optionB,
+            optionC: newQuestion.optionC,
+            optionD: newQuestion.optionD,
+            correctAnswer: newQuestion.correctAnswer,
+            explanation: newQuestion.explanation,
+            subject: newQuestion.subject,
+            chapter: newQuestion.chapter,
+            topic: newQuestion.topic,
         },
     });
     return { message: "Question added successfully", question: newQuestion };
@@ -272,13 +289,140 @@ const getUserHistory = async (userId) => {
     });
 };
 exports.getUserHistory = getUserHistory;
-const updateQuestion = async (questionId, question, optionA, optionB, optionC, optionD, correctAnswer) => {
-    return prisma_1.default.question.update({
+const updateQuestion = async (questionId, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic) => {
+    // Fetch current question
+    const current = await prisma_1.default.question.findUnique({
         where: { id: questionId },
-        data: { question, optionA, optionB, optionC, optionD, correctAnswer },
     });
+    if (!current)
+        throw new Error("Question not found");
+    // Lazy-create version 1 revision if it doesn't exist
+    const hasV1 = await prisma_1.default.questionRevision.findFirst({
+        where: { questionId, version: 1 },
+    });
+    if (!hasV1) {
+        await prisma_1.default.questionRevision.create({
+            data: {
+                questionId,
+                version: 1,
+                question: current.question,
+                optionA: current.optionA,
+                optionB: current.optionB,
+                optionC: current.optionC,
+                optionD: current.optionD,
+                correctAnswer: current.correctAnswer,
+                explanation: current.explanation,
+                subject: current.subject,
+                chapter: current.chapter,
+                topic: current.topic,
+                createdAt: current.createdAt,
+            },
+        });
+    }
+    const nextVersion = current.version + 1;
+    // Update active question
+    const updated = await prisma_1.default.question.update({
+        where: { id: questionId },
+        data: {
+            question: questionText,
+            optionA,
+            optionB,
+            optionC,
+            optionD,
+            correctAnswer,
+            explanation: explanation !== undefined ? explanation : current.explanation,
+            subject: subject !== undefined ? subject : current.subject,
+            chapter: chapter !== undefined ? chapter : current.chapter,
+            topic: topic !== undefined ? topic : current.topic,
+            version: nextVersion,
+        },
+    });
+    // Save the new revision
+    await prisma_1.default.questionRevision.create({
+        data: {
+            questionId,
+            version: nextVersion,
+            question: updated.question,
+            optionA: updated.optionA,
+            optionB: updated.optionB,
+            optionC: updated.optionC,
+            optionD: updated.optionD,
+            correctAnswer: updated.correctAnswer,
+            explanation: updated.explanation,
+            subject: updated.subject,
+            chapter: updated.chapter,
+            topic: updated.topic,
+        },
+    });
+    return updated;
 };
 exports.updateQuestion = updateQuestion;
+/**
+ * Retrieve all revision history for a question.
+ */
+const getQuestionVersionsList = async (questionId) => {
+    return prisma_1.default.questionRevision.findMany({
+        where: { questionId },
+        orderBy: { version: "desc" },
+    });
+};
+exports.getQuestionVersionsList = getQuestionVersionsList;
+/**
+ * Restore a question to a specific previous revision.
+ * This increments the active question version and logs it as a new revision.
+ */
+const restoreQuestionRevision = async (questionId, revisionId) => {
+    // Fetch revision details
+    const revision = await prisma_1.default.questionRevision.findUnique({
+        where: { id: revisionId },
+    });
+    if (!revision || revision.questionId !== questionId) {
+        throw new Error("Revision not found");
+    }
+    // Fetch current question version
+    const current = await prisma_1.default.question.findUnique({
+        where: { id: questionId },
+    });
+    if (!current)
+        throw new Error("Question not found");
+    const nextVersion = current.version + 1;
+    // Restore active question content
+    const restored = await prisma_1.default.question.update({
+        where: { id: questionId },
+        data: {
+            question: revision.question,
+            optionA: revision.optionA,
+            optionB: revision.optionB,
+            optionC: revision.optionC,
+            optionD: revision.optionD,
+            correctAnswer: revision.correctAnswer,
+            explanation: revision.explanation,
+            subject: revision.subject,
+            chapter: revision.chapter,
+            topic: revision.topic,
+            version: nextVersion,
+        },
+    });
+    // Log restored version as a new revision
+    await prisma_1.default.questionRevision.create({
+        data: {
+            questionId,
+            version: nextVersion,
+            question: restored.question,
+            optionA: restored.optionA,
+            optionB: restored.optionB,
+            optionC: restored.optionC,
+            optionD: restored.optionD,
+            correctAnswer: restored.correctAnswer,
+            explanation: restored.explanation,
+            subject: restored.subject,
+            chapter: restored.chapter,
+            topic: restored.topic,
+        },
+    });
+    return restored;
+};
+exports.restoreQuestionRevision = restoreQuestionRevision;
 const deleteQuestion = async (questionId) => {
     return prisma_1.default.question.delete({
         where: { id: questionId },

@@ -25,6 +25,8 @@ router.get("/:quizId", quiz_controller_1.getQuiz);
 router.post("/:quizId/submit", auth_middleware_1.authenticate, quiz_controller_1.submit);
 router.put("/question/:questionId", quiz_controller_1.update);
 router.delete("/question/:questionId", quiz_controller_1.remove);
+router.get("/question/:questionId/versions", quiz_controller_1.getVersions);
+router.post("/question/:questionId/versions/:versionId/restore", quiz_controller_1.restoreVersion);
 router.patch("/:quizId/trash", quiz_controller_1.trashQuiz);
 router.patch("/:quizId/restore", quiz_controller_1.restoreQuizController);
 exports.default = router;

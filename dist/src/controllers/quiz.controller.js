@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
-const prisma_1 = __importDefault(require("../utils/prisma")); // Ye line add karo!
+const prisma_1 = __importDefault(require("../utils/prisma"));
 const create = async (req, res) => {
     try {
         const { title, description, duration, sections, schedulingData } = req.body;
@@ -89,7 +89,7 @@ exports.history = history;
 const update = async (req, res) => {
     try {
         const questionId = req.params.questionId;
-        const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer);
+        const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer, req.body.explanation, req.body.subject, req.body.chapter, req.body.topic);
         res.json(result);
     }
     catch (error) {
@@ -97,6 +97,29 @@ const update = async (req, res) => {
     }
 };
 exports.update = update;
+const getVersions = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const list = await (0, quiz_service_1.getQuestionVersionsList)(questionId);
+        res.json(list);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.getVersions = getVersions;
+const restoreVersion = async (req, res) => {
+    try {
+        const questionId = req.params.questionId;
+        const versionId = req.params.versionId;
+        const restored = await (0, quiz_service_1.restoreQuestionRevision)(questionId, versionId);
+        res.json({ message: "Version restored successfully", question: restored });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.restoreVersion = restoreVersion;
 const remove = async (req, res) => {
     try {
         await (0, quiz_service_1.deleteQuestion)(req.params.questionId);

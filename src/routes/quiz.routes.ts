@@ -18,6 +18,8 @@ import {
   uploadImageController,
   updateQuizController,
   startAttempt,
+  getVersions,
+  restoreVersion,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -85,6 +87,16 @@ router.put(
 router.delete(
   "/question/:questionId",
   remove
+);
+
+router.get(
+  "/question/:questionId/versions",
+  getVersions
+);
+
+router.post(
+  "/question/:questionId/versions/:versionId/restore",
+  restoreVersion
 );
 
 router.patch(

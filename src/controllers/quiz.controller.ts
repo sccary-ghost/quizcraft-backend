@@ -14,9 +14,11 @@ import {
   updateQuiz,
   startQuizAttempt,
   updateQuizStatuses,
+  getQuestionVersionsList,
+  restoreQuestionRevision,
 } from "../services/quiz.service";
 
-import prisma from "../utils/prisma"; // Ye line add karo!
+import prisma from "../utils/prisma";
 export const create = async (req: Request, res: Response) => {
   try {
     const { title, description, duration, sections, schedulingData } = req.body;
@@ -126,9 +128,34 @@ export const update = async (req: Request, res: Response) => {
       req.body.optionB,
       req.body.optionC,
       req.body.optionD,
-      req.body.correctAnswer
+      req.body.correctAnswer,
+      req.body.explanation,
+      req.body.subject,
+      req.body.chapter,
+      req.body.topic
     );
     res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getVersions = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const list = await getQuestionVersionsList(questionId);
+    res.json(list);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const restoreVersion = async (req: Request, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+    const versionId = req.params.versionId as string;
+    const restored = await restoreQuestionRevision(questionId, versionId);
+    res.json({ message: "Version restored successfully", question: restored });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

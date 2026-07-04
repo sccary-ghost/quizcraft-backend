@@ -69,6 +69,7 @@ export const registerUser = async (
       email: user.email,
       mobileNumber: user.mobileNumber,
       isActive: user.isActive,
+      role: user.role,
       createdAt: user.createdAt,
     },
   };
@@ -106,6 +107,7 @@ export const loginUser = async (
     {
       userId: user.id,
       email: user.email,
+      role: user.role,
     },
     process.env.JWT_SECRET as string,
     {
@@ -122,6 +124,7 @@ export const loginUser = async (
       email: user.email,
       mobileNumber: user.mobileNumber,
       isActive: user.isActive,
+      role: user.role,
     },
   };
 };

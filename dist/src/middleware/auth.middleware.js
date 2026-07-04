@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticate = void 0;
+exports.authorizeCandidate = exports.authorizeAdmin = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authenticate = (req, res, next) => {
     try {
@@ -25,3 +25,21 @@ const authenticate = (req, res, next) => {
     }
 };
 exports.authenticate = authenticate;
+const authorizeAdmin = (req, res, next) => {
+    if (req.user && req.user.role === "ADMIN") {
+        return next();
+    }
+    return res.status(403).json({
+        message: "Forbidden: Admin access only",
+    });
+};
+exports.authorizeAdmin = authorizeAdmin;
+const authorizeCandidate = (req, res, next) => {
+    if (req.user && req.user.role === "CANDIDATE") {
+        return next();
+    }
+    return res.status(403).json({
+        message: "Forbidden: Candidate access only",
+    });
+};
+exports.authorizeCandidate = authorizeCandidate;

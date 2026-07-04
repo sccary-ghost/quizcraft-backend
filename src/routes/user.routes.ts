@@ -7,12 +7,12 @@ import {
   exportUserReportCSV,
   exportUserReportExcel,
 } from "../controllers/user.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate, authorizeAdmin } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Require authorization for candidate management
-router.use(authenticate);
+// Require authorization for candidate management (ADMIN only)
+router.use(authenticate, authorizeAdmin);
 
 router.get("/", listCandidates);
 router.get("/:id/profile", candidateProfile);

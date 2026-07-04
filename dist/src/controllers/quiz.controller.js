@@ -75,6 +75,13 @@ const getAttempt = async (req, res) => {
     try {
         const attemptId = req.params.attemptId;
         const attempt = await (0, quiz_service_1.getAttemptById)(attemptId);
+        if (!attempt) {
+            return res.status(404).json({ message: "Attempt not found" });
+        }
+        const user = req.user;
+        if (user.role !== "ADMIN" && attempt.userId !== user.userId) {
+            return res.status(403).json({ message: "Forbidden: You cannot access other candidates' attempts" });
+        }
         res.json(attempt);
     }
     catch (error) {

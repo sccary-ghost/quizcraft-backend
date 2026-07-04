@@ -32,142 +32,70 @@ import {
   bulkEditQuestions,
   getDuplicateQuestions,
   resolveDuplicateQuestions,
+  exportQuizReportCSV,
+  exportQuizReportExcel,
 } from "../controllers/quiz.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate, authorizeAdmin } from "../middleware/auth.middleware";
 
 const router = Router();
 
 // Master Question Bank Upload Route
 router.post(
   "/upload",
+  authenticate,
+  authorizeAdmin,
   upload.single("file"),
   uploadQuestions
 );
 
-// Master Bank Explorer Route
-router.get("/bank/questions", getBankQuestions);
-router.post("/bank/questions/bulk-edit", bulkEditQuestions);
-router.get("/bank/questions/duplicates", getDuplicateQuestions);
-router.post("/bank/questions/duplicates/resolve", resolveDuplicateQuestions);
+// Master Bank Explorer Routes
+router.get("/bank/questions", authenticate, authorizeAdmin, getBankQuestions);
+router.post("/bank/questions/bulk-edit", authenticate, authorizeAdmin, bulkEditQuestions);
+router.get("/bank/questions/duplicates", authenticate, authorizeAdmin, getDuplicateQuestions);
+router.post("/bank/questions/duplicates/resolve", authenticate, authorizeAdmin, resolveDuplicateQuestions);
 
 // Admin Stats Route
-router.get("/admin/stats", getAdminStats);
+router.get("/admin/stats", authenticate, authorizeAdmin, getAdminStats);
 
 // Upload Image Route
-router.post("/upload-image", upload.single("image"), uploadImageController);
+router.post("/upload-image", authenticate, authorizeAdmin, upload.single("image"), uploadImageController);
 
-router.post("/create", create);
+// Quiz CRUD & Administration
+router.post("/create", authenticate, authorizeAdmin, create);
+router.put("/:quizId", authenticate, authorizeAdmin, updateQuizController);
+router.post("/:quizId/questions", authenticate, authorizeAdmin, add);
+router.patch("/:quizId/trash", authenticate, authorizeAdmin, trashQuiz);
+router.patch("/:quizId/restore", authenticate, authorizeAdmin, restoreQuizController);
+router.delete("/:quizId/permanent", authenticate, authorizeAdmin, deleteQuizPermanentlyController);
 
-router.put("/:quizId", updateQuizController);
+// Reports Export
+router.get("/:quizId/report/csv", authenticate, authorizeAdmin, exportQuizReportCSV);
+router.get("/:quizId/report/excel", authenticate, authorizeAdmin, exportQuizReportExcel);
 
+// Question Management
+router.put("/question/:questionId", authenticate, authorizeAdmin, update);
+router.delete("/question/:questionId", authenticate, authorizeAdmin, remove);
+router.get("/question/:questionId/versions", authenticate, authorizeAdmin, getVersions);
+router.post("/question/:questionId/versions/:versionId/restore", authenticate, authorizeAdmin, restoreVersion);
+router.patch("/question/:questionId/status", authenticate, authorizeAdmin, updateStatus);
+router.post("/question/:questionId/comments", authenticate, authorizeAdmin, addComment);
+router.get("/question/:questionId/comments", authenticate, authorizeAdmin, getComments);
+router.patch("/question/:questionId/restore-trash", authenticate, authorizeAdmin, restoreQuestionController);
+router.delete("/question/:questionId/permanent", authenticate, authorizeAdmin, deleteQuestionPermanentlyController);
+
+// Trash Explorer
+router.get("/trash/items", authenticate, authorizeAdmin, getTrash);
+
+// Backup System
+router.get("/backup/export", authenticate, authorizeAdmin, exportBackup);
+router.post("/backup/import", authenticate, authorizeAdmin, importBackup);
+
+// ── Candidate Endpoints ──────────────────────────────────────────────────────
+router.get("/", authenticate, getAll);
+router.get("/history", authenticate, history);
+router.get("/attempt/:attemptId", authenticate, getAttempt);
+router.get("/:quizId", authenticate, getQuiz);
 router.post("/:quizId/start", authenticate, startAttempt);
-
-router.post(
-  "/:quizId/questions",
-  add
-);
-
-router.get(
-  "/",
-  getAll
-);
-
-router.get(
-  "/history",
-  authenticate,
-  history
-);
-
-router.get(
-  "/attempt/:attemptId",
-  getAttempt
-);
-
-router.get(
-  "/:quizId",
-  getQuiz
-);
-
-router.post(
-  "/:quizId/submit",
-  authenticate,
-  submit
-);
-
-router.put(
-  "/question/:questionId",
-  update
-);
-
-router.delete(
-  "/question/:questionId",
-  remove
-);
-
-router.get(
-  "/question/:questionId/versions",
-  getVersions
-);
-
-router.post(
-  "/question/:questionId/versions/:versionId/restore",
-  restoreVersion
-);
-
-router.patch(
-  "/question/:questionId/status",
-  updateStatus
-);
-
-router.post(
-  "/question/:questionId/comments",
-  addComment
-);
-
-router.get(
-  "/question/:questionId/comments",
-  getComments
-);
-
-router.get(
-  "/trash/items",
-  getTrash
-);
-
-router.patch(
-  "/question/:questionId/restore-trash",
-  restoreQuestionController
-);
-
-router.delete(
-  "/question/:questionId/permanent",
-  deleteQuestionPermanentlyController
-);
-
-router.delete(
-  "/:quizId/permanent",
-  deleteQuizPermanentlyController
-);
-
-router.get(
-  "/backup/export",
-  exportBackup
-);
-
-router.post(
-  "/backup/import",
-  authenticate,
-  importBackup
-);
-
-router.patch(
-  "/:quizId/trash",
-  trashQuiz
-);
-
-router.patch(
-  "/:quizId/restore",
-  restoreQuizController
-);
+router.post("/:quizId/submit", authenticate, submit);
 
 export default router;

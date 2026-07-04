@@ -174,6 +174,7 @@ export const register = async (req: Request, res: Response) => {
       {
         userId: result.user.id,
         email: result.user.email,
+        role: result.user.role,
       },
       process.env.JWT_SECRET as string,
       {

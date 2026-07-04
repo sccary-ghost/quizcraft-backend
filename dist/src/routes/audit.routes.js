@@ -5,12 +5,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 /**
  * GET /audit/logs
- * Retrieve all audit log entries, supporting query keyword searches and action filters.
+ * Retrieve all audit log entries. Protected for ADMIN only.
  */
-router.get("/logs", async (req, res) => {
+router.get("/logs", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, async (req, res) => {
     try {
         const search = req.query.search || "";
         const action = req.query.action || "";

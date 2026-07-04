@@ -31,3 +31,29 @@ export const authenticate = (
     });
   }
 };
+
+export const authorizeAdmin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if ((req as any).user && (req as any).user.role === "ADMIN") {
+    return next();
+  }
+  return res.status(403).json({
+    message: "Forbidden: Admin access only",
+  });
+};
+
+export const authorizeCandidate = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if ((req as any).user && (req as any).user.role === "CANDIDATE") {
+    return next();
+  }
+  return res.status(403).json({
+    message: "Forbidden: Candidate access only",
+  });
+};

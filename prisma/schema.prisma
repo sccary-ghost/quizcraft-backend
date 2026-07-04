@@ -15,6 +15,7 @@ model User {
   mobileNumber String?   @unique
   isActive     Boolean   @default(true)
   profilePhoto String?
+  role         Role      @default(CANDIDATE)
   createdAt    DateTime  @default(now())
   attempts     Attempt[]
 }
@@ -181,4 +182,9 @@ model Folder {
   parent    Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children  Folder[]   @relation("FolderHierarchy")
   questions Question[]
+}
+
+enum Role {
+  ADMIN
+  CANDIDATE
 }

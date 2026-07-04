@@ -60,6 +60,7 @@ const registerUser = async (name, email, password, mobileNumber) => {
             email: user.email,
             mobileNumber: user.mobileNumber,
             isActive: user.isActive,
+            role: user.role,
             createdAt: user.createdAt,
         },
     };
@@ -85,6 +86,7 @@ const loginUser = async (email, password) => {
     const token = jsonwebtoken_1.default.sign({
         userId: user.id,
         email: user.email,
+        role: user.role,
     }, process.env.JWT_SECRET, {
         expiresIn: "7d",
     });
@@ -97,6 +99,7 @@ const loginUser = async (email, password) => {
             email: user.email,
             mobileNumber: user.mobileNumber,
             isActive: user.isActive,
+            role: user.role,
         },
     };
 };

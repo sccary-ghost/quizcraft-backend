@@ -121,6 +121,13 @@ export const getAttempt = async (req: Request, res: Response) => {
   try {
     const attemptId = req.params.attemptId as string;
     const attempt = await getAttemptById(attemptId);
+    if (!attempt) {
+      return res.status(404).json({ message: "Attempt not found" });
+    }
+    const user = (req as any).user;
+    if (user.role !== "ADMIN" && attempt.userId !== user.userId) {
+      return res.status(403).json({ message: "Forbidden: You cannot access other candidates' attempts" });
+    }
     res.json(attempt);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

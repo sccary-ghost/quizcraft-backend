@@ -158,6 +158,7 @@ const register = async (req, res) => {
         const token = jsonwebtoken_1.default.sign({
             userId: result.user.id,
             email: result.user.email,
+            role: result.user.role,
         }, process.env.JWT_SECRET, {
             expiresIn: "7d",
         });

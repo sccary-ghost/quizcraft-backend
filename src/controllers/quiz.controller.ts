@@ -638,3 +638,48 @@ export const exportQuizReportExcel = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const bulkEditQuestions = async (req: Request, res: Response) => {
+  try {
+    const { questionIds, updates } = req.body;
+
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      return res.status(400).json({ message: "questionIds array is required." });
+    }
+
+    if (!updates || typeof updates !== "object") {
+      return res.status(400).json({ message: "updates object is required." });
+    }
+
+    const { subject, chapter, topic, status } = updates;
+
+    for (const qId of questionIds) {
+      const q = await prisma.question.findUnique({
+        where: { id: qId }
+      });
+      if (!q) continue;
+
+      await updateQuestion(
+        qId,
+        q.question,
+        q.optionA,
+        q.optionB,
+        q.optionC,
+        q.optionD,
+        q.correctAnswer,
+        q.explanation,
+        subject !== undefined ? subject : q.subject,
+        chapter !== undefined ? chapter : q.chapter,
+        topic !== undefined ? topic : q.topic,
+        status !== undefined ? status : q.status,
+        q.tags
+      );
+    }
+
+    await logAuditAction(req, `Bulk edited ${questionIds.length} questions`);
+
+    res.json({ message: "Questions bulk updated successfully." });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

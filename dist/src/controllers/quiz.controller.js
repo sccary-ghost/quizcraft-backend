@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportQuizReportExcel = exports.exportQuizReportCSV = exports.importBackup = exports.exportBackup = exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.bulkEditQuestions = exports.exportQuizReportExcel = exports.exportQuizReportCSV = exports.importBackup = exports.exportBackup = exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
@@ -562,3 +562,29 @@ const exportQuizReportExcel = async (req, res) => {
     }
 };
 exports.exportQuizReportExcel = exportQuizReportExcel;
+const bulkEditQuestions = async (req, res) => {
+    try {
+        const { questionIds, updates } = req.body;
+        if (!Array.isArray(questionIds) || questionIds.length === 0) {
+            return res.status(400).json({ message: "questionIds array is required." });
+        }
+        if (!updates || typeof updates !== "object") {
+            return res.status(400).json({ message: "updates object is required." });
+        }
+        const { subject, chapter, topic, status } = updates;
+        for (const qId of questionIds) {
+            const q = await prisma_1.default.question.findUnique({
+                where: { id: qId }
+            });
+            if (!q)
+                continue;
+            await (0, quiz_service_1.updateQuestion)(qId, q.question, q.optionA, q.optionB, q.optionC, q.optionD, q.correctAnswer, q.explanation, subject !== undefined ? subject : q.subject, chapter !== undefined ? chapter : q.chapter, topic !== undefined ? topic : q.topic, status !== undefined ? status : q.status, q.tags);
+        }
+        await (0, auditLogger_1.logAuditAction)(req, `Bulk edited ${questionIds.length} questions`);
+        res.json({ message: "Questions bulk updated successfully." });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.bulkEditQuestions = bulkEditQuestions;

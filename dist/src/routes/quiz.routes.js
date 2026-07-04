@@ -10,6 +10,7 @@ const router = (0, express_1.Router)();
 router.post("/upload", upload_middleware_1.upload.single("file"), bulkUpload_controller_1.uploadQuestions);
 // Master Bank Explorer Route
 router.get("/bank/questions", quiz_controller_1.getBankQuestions);
+router.post("/bank/questions/bulk-edit", quiz_controller_1.bulkEditQuestions);
 // Admin Stats Route
 router.get("/admin/stats", quiz_controller_1.getAdminStats);
 // Upload Image Route

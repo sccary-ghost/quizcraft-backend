@@ -29,6 +29,7 @@ import {
   deleteQuizPermanentlyController,
   exportBackup,
   importBackup,
+  bulkEditQuestions,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -43,6 +44,7 @@ router.post(
 
 // Master Bank Explorer Route
 router.get("/bank/questions", getBankQuestions);
+router.post("/bank/questions/bulk-edit", bulkEditQuestions);
 
 // Admin Stats Route
 router.get("/admin/stats", getAdminStats);

@@ -3,10 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bulkEditQuestions = exports.exportQuizReportExcel = exports.exportQuizReportCSV = exports.importBackup = exports.exportBackup = exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
+exports.resolveDuplicateQuestions = exports.getDuplicateQuestions = exports.bulkEditQuestions = exports.exportQuizReportExcel = exports.exportQuizReportCSV = exports.importBackup = exports.exportBackup = exports.deleteQuizPermanentlyController = exports.deleteQuestionPermanentlyController = exports.restoreQuestionController = exports.getTrash = exports.getComments = exports.addComment = exports.updateStatus = exports.startAttempt = exports.updateQuizController = exports.uploadImageController = exports.getAdminStats = exports.getBankQuestions = exports.restoreQuizController = exports.trashQuiz = exports.remove = exports.restoreVersion = exports.getVersions = exports.update = exports.history = exports.getAttempt = exports.submit = exports.getQuiz = exports.getAll = exports.add = exports.create = void 0;
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
+const duplicateDetector_1 = require("../utils/duplicateDetector");
 const create = async (req, res) => {
     try {
         const { title, description, duration, sections, schedulingData } = req.body;
@@ -588,3 +589,63 @@ const bulkEditQuestions = async (req, res) => {
     }
 };
 exports.bulkEditQuestions = bulkEditQuestions;
+const getDuplicateQuestions = async (req, res) => {
+    try {
+        const questions = await prisma_1.default.question.findMany({
+            where: { isBank: true },
+            orderBy: { createdAt: "desc" },
+        });
+        const duplicateGroups = (0, duplicateDetector_1.findDuplicates)(questions, 0.85);
+        res.json(duplicateGroups);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getDuplicateQuestions = getDuplicateQuestions;
+const resolveDuplicateQuestions = async (req, res) => {
+    try {
+        const { keptId, purgeIds } = req.body;
+        if (!keptId || !Array.isArray(purgeIds) || purgeIds.length === 0) {
+            return res.status(400).json({ message: "keptId and purgeIds array are required." });
+        }
+        await prisma_1.default.$transaction(async (tx) => {
+            await tx.answer.updateMany({
+                where: { questionId: { in: purgeIds } },
+                data: { questionId: keptId },
+            });
+            await tx.reviewComment.updateMany({
+                where: { questionId: { in: purgeIds } },
+                data: { questionId: keptId },
+            });
+            await tx.questionRevision.updateMany({
+                where: { questionId: { in: purgeIds } },
+                data: { questionId: keptId },
+            });
+            const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
+            if (keptQuestion) {
+                for (const pId of purgeIds) {
+                    const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
+                    if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
+                        await tx.question.update({
+                            where: { id: keptId },
+                            data: {
+                                quizId: purgedQuestion.quizId,
+                                sectionId: purgedQuestion.sectionId,
+                            },
+                        });
+                    }
+                }
+            }
+            await tx.question.deleteMany({
+                where: { id: { in: purgeIds } },
+            });
+        });
+        await (0, auditLogger_1.logAuditAction)(req, `Resolved duplicates: kept ${keptId}, purged ${purgeIds.length} items`);
+        res.json({ message: "Duplicates resolved successfully." });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.resolveDuplicateQuestions = resolveDuplicateQuestions;

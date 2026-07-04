@@ -11,6 +11,8 @@ router.post("/upload", upload_middleware_1.upload.single("file"), bulkUpload_con
 // Master Bank Explorer Route
 router.get("/bank/questions", quiz_controller_1.getBankQuestions);
 router.post("/bank/questions/bulk-edit", quiz_controller_1.bulkEditQuestions);
+router.get("/bank/questions/duplicates", quiz_controller_1.getDuplicateQuestions);
+router.post("/bank/questions/duplicates/resolve", quiz_controller_1.resolveDuplicateQuestions);
 // Admin Stats Route
 router.get("/admin/stats", quiz_controller_1.getAdminStats);
 // Upload Image Route

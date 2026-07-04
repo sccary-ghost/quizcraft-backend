@@ -30,6 +30,8 @@ import {
   exportBackup,
   importBackup,
   bulkEditQuestions,
+  getDuplicateQuestions,
+  resolveDuplicateQuestions,
 } from "../controllers/quiz.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -45,6 +47,8 @@ router.post(
 // Master Bank Explorer Route
 router.get("/bank/questions", getBankQuestions);
 router.post("/bank/questions/bulk-edit", bulkEditQuestions);
+router.get("/bank/questions/duplicates", getDuplicateQuestions);
+router.post("/bank/questions/duplicates/resolve", resolveDuplicateQuestions);
 
 // Admin Stats Route
 router.get("/admin/stats", getAdminStats);

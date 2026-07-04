@@ -29,6 +29,7 @@ import {
 
 import prisma from "../utils/prisma";
 import { logAuditAction } from "../utils/auditLogger";
+import { findDuplicates } from "../utils/duplicateDetector";
 
 export const create = async (req: Request, res: Response) => {
   try {
@@ -679,6 +680,72 @@ export const bulkEditQuestions = async (req: Request, res: Response) => {
     await logAuditAction(req, `Bulk edited ${questionIds.length} questions`);
 
     res.json({ message: "Questions bulk updated successfully." });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getDuplicateQuestions = async (req: Request, res: Response) => {
+  try {
+    const questions = await prisma.question.findMany({
+      where: { isBank: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const duplicateGroups = findDuplicates(questions, 0.85);
+    res.json(duplicateGroups);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const resolveDuplicateQuestions = async (req: Request, res: Response) => {
+  try {
+    const { keptId, purgeIds } = req.body;
+
+    if (!keptId || !Array.isArray(purgeIds) || purgeIds.length === 0) {
+      return res.status(400).json({ message: "keptId and purgeIds array are required." });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.answer.updateMany({
+        where: { questionId: { in: purgeIds } },
+        data: { questionId: keptId },
+      });
+
+      await tx.reviewComment.updateMany({
+        where: { questionId: { in: purgeIds } },
+        data: { questionId: keptId },
+      });
+
+      await tx.questionRevision.updateMany({
+        where: { questionId: { in: purgeIds } },
+        data: { questionId: keptId },
+      });
+
+      const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
+      if (keptQuestion) {
+        for (const pId of purgeIds) {
+          const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
+          if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
+            await tx.question.update({
+              where: { id: keptId },
+              data: {
+                quizId: purgedQuestion.quizId,
+                sectionId: purgedQuestion.sectionId,
+              },
+            });
+          }
+        }
+      }
+
+      await tx.question.deleteMany({
+        where: { id: { in: purgeIds } },
+      });
+    });
+
+    await logAuditAction(req, `Resolved duplicates: kept ${keptId}, purged ${purgeIds.length} items`);
+    res.json({ message: "Duplicates resolved successfully." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

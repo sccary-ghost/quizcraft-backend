@@ -77,6 +77,8 @@ model Question {
   comments      ReviewComment[]
   quiz          Quiz?    @relation(fields: [quizId], references: [id])
   section       Section? @relation(fields: [sectionId], references: [id])
+  folderId      String?
+  folder        Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
 }
 
 model ReviewComment {
@@ -167,4 +169,16 @@ model AuditLog {
   userAgent  String?
   action     String
   target     String?
+}
+
+model Folder {
+  id        String     @id @default(cuid())
+  name      String
+  parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  parent    Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[]   @relation("FolderHierarchy")
+  questions Question[]
 }

@@ -6,7 +6,7 @@ const router = Router();
 // Add single question to master question bank
 router.post("/add", async (req, res) => {
   try {
-    const { question, options, correctAnswer, subject, chapter, topic, explanation } = req.body;
+    const { question, options, correctAnswer, subject, chapter, topic, explanation, tags } = req.body;
 
     if (!question || !options || !correctAnswer) {
       return res.status(400).json({ message: "Required fields are missing." });
@@ -24,6 +24,7 @@ router.post("/add", async (req, res) => {
         chapter: chapter || null,
         topic: topic || null,
         explanation: explanation || null,
+        tags: tags || [],
         isBank: true,
       },
     });

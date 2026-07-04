@@ -89,7 +89,7 @@ const createQuiz = async (title, description, duration, sections, schedulingData
     return { message: "Quiz created successfully", quiz };
 };
 exports.createQuiz = createQuiz;
-const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId) => {
+const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, tags) => {
     const newQuestion = await prisma_1.default.question.create({
         data: {
             quizId,
@@ -104,6 +104,7 @@ const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD,
             subject: subject || null,
             chapter: chapter || null,
             topic: topic || null,
+            tags: tags || [],
         },
     });
     // Create version 1 revision immediately
@@ -122,6 +123,7 @@ const addQuestion = async (quizId, question, optionA, optionB, optionC, optionD,
             chapter: newQuestion.chapter,
             topic: newQuestion.topic,
             status: newQuestion.status,
+            tags: newQuestion.tags,
         },
     });
     return { message: "Question added successfully", question: newQuestion };
@@ -304,7 +306,7 @@ const getUserHistory = async (userId) => {
     });
 };
 exports.getUserHistory = getUserHistory;
-const updateQuestion = async (questionId, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, status) => {
+const updateQuestion = async (questionId, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, status, tags) => {
     // Fetch current question
     const current = await prisma_1.default.question.findUnique({
         where: { id: questionId },
@@ -331,6 +333,7 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
                 chapter: current.chapter,
                 topic: current.topic,
                 status: current.status,
+                tags: current.tags,
                 createdAt: current.createdAt,
             },
         });
@@ -353,6 +356,7 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
             topic: topic !== undefined ? topic : current.topic,
             status: newStatus,
             version: nextVersion,
+            tags: tags !== undefined ? (tags || []) : current.tags,
         },
     });
     // Save the new revision
@@ -371,6 +375,7 @@ const updateQuestion = async (questionId, questionText, optionA, optionB, option
             chapter: updated.chapter,
             topic: updated.topic,
             status: updated.status,
+            tags: updated.tags,
         },
     });
     return updated;
@@ -420,6 +425,7 @@ const restoreQuestionRevision = async (questionId, revisionId) => {
             chapter: revision.chapter,
             topic: revision.topic,
             status: revision.status,
+            tags: revision.tags,
             version: nextVersion,
         },
     });
@@ -439,6 +445,7 @@ const restoreQuestionRevision = async (questionId, revisionId) => {
             chapter: restored.chapter,
             topic: restored.topic,
             status: restored.status,
+            tags: restored.tags,
         },
     });
     return restored;

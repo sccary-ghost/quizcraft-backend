@@ -57,6 +57,7 @@ export const add = async (req: Request, res: Response) => {
       chapter,
       topic,
       sectionId,
+      tags,
     } = req.body;
     const result = await addQuestion(
       quizId,
@@ -70,7 +71,8 @@ export const add = async (req: Request, res: Response) => {
       subject,
       chapter,
       topic,
-      sectionId
+      sectionId,
+      tags
     );
     const createdQuestionId = result.question?.id || (result as any).id;
     await logAuditAction(req, "Question Created", createdQuestionId);
@@ -148,7 +150,9 @@ export const update = async (req: Request, res: Response) => {
       req.body.explanation,
       req.body.subject,
       req.body.chapter,
-      req.body.topic
+      req.body.topic,
+      req.body.status,
+      req.body.tags
     );
     await logAuditAction(req, "Question Edited", questionId);
     res.json(result);

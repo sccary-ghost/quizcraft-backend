@@ -101,7 +101,8 @@ export const addQuestion = async (
   subject?: string,
   chapter?: string,
   topic?: string,
-  sectionId?: string
+  sectionId?: string,
+  tags?: string[]
 ) => {
   const newQuestion = await prisma.question.create({
     data: {
@@ -117,6 +118,7 @@ export const addQuestion = async (
       subject: subject || null,
       chapter: chapter || null,
       topic: topic || null,
+      tags: tags || [],
     },
   });
 
@@ -136,6 +138,7 @@ export const addQuestion = async (
       chapter: newQuestion.chapter,
       topic: newQuestion.topic,
       status: newQuestion.status,
+      tags: newQuestion.tags,
     },
   });
 
@@ -340,7 +343,8 @@ export const updateQuestion = async (
   subject?: string | null,
   chapter?: string | null,
   topic?: string | null,
-  status?: string
+  status?: string,
+  tags?: string[] | null
 ) => {
   // Fetch current question
   const current = await prisma.question.findUnique({
@@ -368,6 +372,7 @@ export const updateQuestion = async (
         chapter: current.chapter,
         topic: current.topic,
         status: current.status,
+        tags: current.tags,
         createdAt: current.createdAt,
       },
     });
@@ -392,6 +397,7 @@ export const updateQuestion = async (
       topic: topic !== undefined ? topic : current.topic,
       status: newStatus,
       version: nextVersion,
+      tags: tags !== undefined ? (tags || []) : current.tags,
     },
   });
 
@@ -411,6 +417,7 @@ export const updateQuestion = async (
       chapter: updated.chapter,
       topic: updated.topic,
       status: updated.status,
+      tags: updated.tags,
     },
   });
 
@@ -463,6 +470,7 @@ export const restoreQuestionRevision = async (questionId: string, revisionId: st
       chapter: revision.chapter,
       topic: revision.topic,
       status: revision.status,
+      tags: revision.tags,
       version: nextVersion,
     },
   });
@@ -483,6 +491,7 @@ export const restoreQuestionRevision = async (questionId: string, revisionId: st
       chapter: restored.chapter,
       topic: restored.topic,
       status: restored.status,
+      tags: restored.tags,
     },
   });
 

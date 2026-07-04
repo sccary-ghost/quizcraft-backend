@@ -23,8 +23,8 @@ exports.create = create;
 const add = async (req, res) => {
     try {
         const quizId = req.params.quizId;
-        const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, } = req.body;
-        const result = await (0, quiz_service_1.addQuestion)(quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId);
+        const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, tags, } = req.body;
+        const result = await (0, quiz_service_1.addQuestion)(quizId, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter, topic, sectionId, tags);
         const createdQuestionId = result.question?.id || result.id;
         await (0, auditLogger_1.logAuditAction)(req, "Question Created", createdQuestionId);
         res.json(result);
@@ -95,7 +95,7 @@ exports.history = history;
 const update = async (req, res) => {
     try {
         const questionId = req.params.questionId;
-        const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer, req.body.explanation, req.body.subject, req.body.chapter, req.body.topic);
+        const result = await (0, quiz_service_1.updateQuestion)(questionId, req.body.question, req.body.optionA, req.body.optionB, req.body.optionC, req.body.optionD, req.body.correctAnswer, req.body.explanation, req.body.subject, req.body.chapter, req.body.topic, req.body.status, req.body.tags);
         await (0, auditLogger_1.logAuditAction)(req, "Question Edited", questionId);
         res.json(result);
     }

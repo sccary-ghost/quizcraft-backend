@@ -9,6 +9,7 @@ const questions_routes_1 = __importDefault(require("./routes/questions.routes"))
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const audit_routes_1 = __importDefault(require("./routes/audit.routes"));
 const folder_routes_1 = __importDefault(require("./routes/folder.routes"));
+const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -29,6 +30,7 @@ app.use("/questions", questions_routes_1.default);
 app.use("/users", user_routes_1.default);
 app.use("/audit", audit_routes_1.default);
 app.use("/folders", folder_routes_1.default);
+app.use("/media", media_routes_1.default);
 app.get("/", (req, res) => {
     res.send("QuizCraft Backend Running 🚀");
 });

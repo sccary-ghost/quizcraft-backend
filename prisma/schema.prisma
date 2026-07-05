@@ -152,9 +152,12 @@ model Attempt {
   percentage  Float
   submittedAt DateTime @default(now())
   completed   Boolean  @default(true)
+  state       SessionState @default(STARTED)
   answers     Answer[]
   quiz        Quiz     @relation(fields: [quizId], references: [id])
   user        User     @relation(fields: [userId], references: [id])
+  session     AttemptSession?
+  historyLogs SessionHistoryLog[]
 }
 
 model Answer {
@@ -349,9 +352,12 @@ model PracticeSession {
   score          Float?
   accuracy       Float?
   timeSpent      Int                       @default(0)
+  state          SessionState              @default(STARTED)
 
   questions      PracticeSessionQuestion[]
   user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshot       PracticeSessionSnapshot?
+  historyLogs    SessionHistoryLog[]
 }
 
 model PracticeSessionQuestion {
@@ -367,4 +373,80 @@ model PracticeSessionQuestion {
   question          Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([practiceSessionId, questionId])
+}
+
+enum SessionState {
+  CREATED
+  STARTED
+  ACTIVE
+  OFFLINE
+  PAUSED
+  RESUMED
+  LOCKED
+  SYNC_CONFLICT
+  COMPLETED
+  AUTO_SUBMITTED
+  EXPIRED
+}
+
+enum SessionEvent {
+  STARTED
+  RESUMED
+  AUTO_SAVE
+  HEARTBEAT
+  OFFLINE
+  ONLINE
+  CLAIMED
+  AUTO_SUBMITTED
+  COMPLETED
+  EXPIRED
+}
+
+model AttemptSession {
+  id               String       @id @default(cuid())
+  attemptId        String       @unique
+  currentIndex     Int          @default(0)
+  currentSectionId String?
+  questionOrder    Json         // Shuffled array of question IDs
+  optionOrder      Json         // Shuffled options map per question
+  markedForReview  Json         // Array of marked question IDs
+  visitedQuestions Json         // Array of visited question IDs
+  warningCount     Int          @default(0)
+  version          Int          @default(0)
+  
+  lastHeartbeatAt  DateTime?
+  clientId         String?      // Client active tab token
+  updatedAt        DateTime     @updatedAt
+
+  attempt          Attempt      @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+}
+
+model PracticeSessionSnapshot {
+  id               String          @id @default(cuid())
+  practiceId       String          @unique
+  currentIndex     Int             @default(0)
+  currentSectionId String?
+  questionOrder    Json
+  optionOrder      Json
+  markedForReview  Json
+  visitedQuestions Json
+  warningCount     Int             @default(0)
+  version          Int             @default(0)
+  clientId         String?
+  lastHeartbeatAt  DateTime?
+  updatedAt        DateTime        @updatedAt
+
+  practice         PracticeSession @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+}
+
+model SessionHistoryLog {
+  id         String           @id @default(cuid())
+  attemptId  String?
+  practiceId String?
+  event      SessionEvent
+  payload    Json?
+  createdAt  DateTime         @default(now())
+
+  attempt    Attempt?         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  practice   PracticeSession? @relation(fields: [practiceId], references: [id], onDelete: Cascade)
 }

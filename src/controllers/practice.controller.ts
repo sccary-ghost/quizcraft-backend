@@ -64,6 +64,7 @@ export const getSessionDetails = async (req: Request, res: Response) => {
           include: { question: true },
           orderBy: { order: "asc" },
         },
+        snapshot: true,
       },
     });
 

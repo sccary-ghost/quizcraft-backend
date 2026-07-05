@@ -58,6 +58,7 @@ export const registerUser = async (
       password: hashedPassword,
       mobileNumber,
       isActive: true,
+      lastLogin: new Date(),
     },
   });
 
@@ -94,14 +95,17 @@ export const loginUser = async (
     throw new Error("Your account has been deactivated. Please contact administration.");
   }
 
-  const isPasswordValid = await bcrypt.compare(
-    password,
-    user.password
-  );
-
-  if (!isPasswordValid) {
-    throw new Error("Invalid credentials");
+  // Verify password hash
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
+    throw new Error("Invalid email or password");
   }
+
+  // Update lastLogin
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLogin: new Date() },
+  });
 
   const token = jwt.sign(
     {

@@ -50,6 +50,7 @@ const registerUser = async (name, email, password, mobileNumber) => {
             password: hashedPassword,
             mobileNumber,
             isActive: true,
+            lastLogin: new Date(),
         },
     });
     return {
@@ -79,10 +80,16 @@ const loginUser = async (email, password) => {
     if (user.isActive === false) {
         throw new Error("Your account has been deactivated. Please contact administration.");
     }
-    const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
-    if (!isPasswordValid) {
-        throw new Error("Invalid credentials");
+    // Verify password hash
+    const isValidPassword = await bcrypt_1.default.compare(password, user.password);
+    if (!isValidPassword) {
+        throw new Error("Invalid email or password");
     }
+    // Update lastLogin
+    await prisma_1.default.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() },
+    });
     const token = jsonwebtoken_1.default.sign({
         userId: user.id,
         email: user.email,

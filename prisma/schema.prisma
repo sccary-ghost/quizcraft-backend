@@ -24,6 +24,10 @@ model User {
   bookmarks    Bookmark[]
   collections  BookmarkCollection[]
   practiceLogs BookmarkPracticeLog[]
+  preferredLanguage Language @default(EN)
+  translations QuestionTranslation[] @relation("Translator")
+  reviews      QuestionTranslation[] @relation("Reviewer")
+  edits        TranslationRevision[]
   practiceSessions PracticeSession[]
 }
 
@@ -55,6 +59,7 @@ model Quiz {
   updatedAt        DateTime?   @updatedAt
   createdAt        DateTime   @default(now())
   isPractice       Boolean    @default(false)
+  availableLanguages Language[] @default([EN])
   attempts         Attempt[]
   questions        Question[]
   sections         Section[]
@@ -92,6 +97,7 @@ model Question {
   difficulty    Difficulty @default(MEDIUM)
   bookmarks     Bookmark[]
   practiceQuestions PracticeSessionQuestion[]
+  translations  QuestionTranslation[]
 }
 
 model ReviewComment {
@@ -449,4 +455,62 @@ model SessionHistoryLog {
 
   attempt    Attempt?         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   practice   PracticeSession? @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+}
+
+enum Language {
+  EN
+  HI
+}
+
+enum TranslationStatus {
+  MISSING
+  DRAFT
+  REVIEW
+  APPROVED
+}
+
+model QuestionTranslation {
+  id             String                       @id @default(cuid())
+  questionId     String
+  language       Language
+  questionText   String
+  explanation    String?
+  status         TranslationStatus            @default(DRAFT)
+  translatedById String?
+  reviewedById   String?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  question       Question                     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  translatedBy   User?                        @relation("Translator", fields: [translatedById], references: [id])
+  reviewedBy     User?                        @relation("Reviewer", fields: [reviewedById], references: [id])
+  options        QuestionOptionTranslation[]
+  revisions      TranslationRevision[]
+
+  @@unique([questionId, language])
+}
+
+model QuestionOptionTranslation {
+  id            String              @id @default(cuid())
+  translationId String
+  optionIndex   Int
+  text          String
+
+  translation   QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  
+  @@unique([translationId, optionIndex])
+}
+
+model TranslationRevision {
+  id            String              @id @default(cuid())
+  translationId String
+  version       Int
+  questionText  String
+  explanation   String?
+  optionsJson   Json                // Stores snapshot of options
+  editedById    String?
+  createdAt     DateTime            @default(now())
+
+  translation   QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  editedBy      User?               @relation(fields: [editedById], references: [id])
 }

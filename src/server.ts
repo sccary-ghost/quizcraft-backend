@@ -8,6 +8,7 @@ import mediaRoutes from "./routes/media.routes";
 import bookmarkRoutes from "./routes/bookmark.routes";
 import practiceRoutes from "./routes/practice.routes";
 import resumeRoutes from "./routes/resume.routes";
+import translationRoutes from "./routes/translation.routes";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -37,6 +38,7 @@ app.use("/media", mediaRoutes);
 app.use("/bookmarks", bookmarkRoutes);
 app.use("/practice", practiceRoutes);
 app.use("/session", resumeRoutes);
+app.use("/translations", translationRoutes);
 
 app.get("/", (req, res) => {
   res.send("QuizCraft Backend Running 🚀");

@@ -154,6 +154,11 @@ export const getQuizById = async (quizId: string, isAdmin = false) => {
         where: { isDeleted: false },
         orderBy: {
           createdAt: "asc"
+        },
+        include: {
+          translations: {
+            include: { options: true }
+          }
         }
       },
       sections: {

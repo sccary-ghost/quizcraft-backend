@@ -5,6 +5,8 @@ import userRoutes from "./routes/user.routes";
 import auditRoutes from "./routes/audit.routes";
 import folderRoutes from "./routes/folder.routes";
 import mediaRoutes from "./routes/media.routes";
+import bookmarkRoutes from "./routes/bookmark.routes";
+import practiceRoutes from "./routes/practice.routes";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -31,6 +33,8 @@ app.use("/users", userRoutes);
 app.use("/audit", auditRoutes);
 app.use("/folders", folderRoutes);
 app.use("/media", mediaRoutes);
+app.use("/bookmarks", bookmarkRoutes);
+app.use("/practice", practiceRoutes);
 
 app.get("/", (req, res) => {
   res.send("QuizCraft Backend Running 🚀");

@@ -7,6 +7,7 @@ import {
 } from "../services/user.service";
 import prisma from "../utils/prisma";
 import { logAuditAction } from "../utils/auditLogger";
+import { getCandidateAnalytics } from "../services/analytics.service";
 
 /**
  * Controller to fetch list of candidates with search, filter, and sorting.
@@ -232,5 +233,62 @@ export const exportUserReportExcel = async (req: Request, res: Response) => {
     res.send(html);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Controller to fetch candidate analytics.
+ */
+export const getAnalytics = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const range = (req.query.range as string) || "30d";
+
+    const data = await getCandidateAnalytics(userId, range);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({
+      message: error.message || "Failed to compute candidate performance analytics",
+    });
+  }
+};
+
+/**
+ * Controller to update candidate goals.
+ */
+export const updateGoals = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { targetAccuracy, weeklyPracticeGoal, monthlyTestGoal, questionsPerWeekGoal, isEnabled } = req.body;
+
+    const updated = await prisma.userGoal.upsert({
+      where: { userId },
+      update: {
+        ...(targetAccuracy !== undefined ? { targetAccuracy: parseFloat(targetAccuracy) } : {}),
+        ...(weeklyPracticeGoal !== undefined ? { weeklyPracticeGoal: parseInt(weeklyPracticeGoal) } : {}),
+        ...(monthlyTestGoal !== undefined ? { monthlyTestGoal: parseInt(monthlyTestGoal) } : {}),
+        ...(questionsPerWeekGoal !== undefined ? { questionsPerWeekGoal: parseInt(questionsPerWeekGoal) } : {}),
+        ...(isEnabled !== undefined ? { isEnabled: Boolean(isEnabled) } : {}),
+      },
+      create: {
+        userId,
+        targetAccuracy: targetAccuracy !== undefined ? parseFloat(targetAccuracy) : 75.0,
+        weeklyPracticeGoal: weeklyPracticeGoal !== undefined ? parseInt(weeklyPracticeGoal) : 5,
+        monthlyTestGoal: monthlyTestGoal !== undefined ? parseInt(monthlyTestGoal) : 15,
+        questionsPerWeekGoal: questionsPerWeekGoal !== undefined ? parseInt(questionsPerWeekGoal) : 100,
+        isEnabled: isEnabled !== undefined ? Boolean(isEnabled) : true,
+      },
+    });
+
+    await logAuditAction(req, "Candidate Goals Updated", userId);
+
+    res.json({
+      message: "Goals updated successfully",
+      goal: updated,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: error.message || "Failed to save goals",
+    });
   }
 };

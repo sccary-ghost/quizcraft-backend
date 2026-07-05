@@ -3,10 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportUserReportExcel = exports.exportUserReportCSV = exports.editCandidate = exports.candidateAttempts = exports.candidateProfile = exports.listCandidates = void 0;
+exports.updateGoals = exports.getAnalytics = exports.exportUserReportExcel = exports.exportUserReportCSV = exports.editCandidate = exports.candidateAttempts = exports.candidateProfile = exports.listCandidates = void 0;
 const user_service_1 = require("../services/user.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const auditLogger_1 = require("../utils/auditLogger");
+const analytics_service_1 = require("../services/analytics.service");
 /**
  * Controller to fetch list of candidates with search, filter, and sorting.
  */
@@ -221,3 +222,58 @@ const exportUserReportExcel = async (req, res) => {
     }
 };
 exports.exportUserReportExcel = exportUserReportExcel;
+/**
+ * Controller to fetch candidate analytics.
+ */
+const getAnalytics = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const range = req.query.range || "30d";
+        const data = await (0, analytics_service_1.getCandidateAnalytics)(userId, range);
+        res.json(data);
+    }
+    catch (error) {
+        res.status(500).json({
+            message: error.message || "Failed to compute candidate performance analytics",
+        });
+    }
+};
+exports.getAnalytics = getAnalytics;
+/**
+ * Controller to update candidate goals.
+ */
+const updateGoals = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { targetAccuracy, weeklyPracticeGoal, monthlyTestGoal, questionsPerWeekGoal, isEnabled } = req.body;
+        const updated = await prisma_1.default.userGoal.upsert({
+            where: { userId },
+            update: {
+                ...(targetAccuracy !== undefined ? { targetAccuracy: parseFloat(targetAccuracy) } : {}),
+                ...(weeklyPracticeGoal !== undefined ? { weeklyPracticeGoal: parseInt(weeklyPracticeGoal) } : {}),
+                ...(monthlyTestGoal !== undefined ? { monthlyTestGoal: parseInt(monthlyTestGoal) } : {}),
+                ...(questionsPerWeekGoal !== undefined ? { questionsPerWeekGoal: parseInt(questionsPerWeekGoal) } : {}),
+                ...(isEnabled !== undefined ? { isEnabled: Boolean(isEnabled) } : {}),
+            },
+            create: {
+                userId,
+                targetAccuracy: targetAccuracy !== undefined ? parseFloat(targetAccuracy) : 75.0,
+                weeklyPracticeGoal: weeklyPracticeGoal !== undefined ? parseInt(weeklyPracticeGoal) : 5,
+                monthlyTestGoal: monthlyTestGoal !== undefined ? parseInt(monthlyTestGoal) : 15,
+                questionsPerWeekGoal: questionsPerWeekGoal !== undefined ? parseInt(questionsPerWeekGoal) : 100,
+                isEnabled: isEnabled !== undefined ? Boolean(isEnabled) : true,
+            },
+        });
+        await (0, auditLogger_1.logAuditAction)(req, "Candidate Goals Updated", userId);
+        res.json({
+            message: "Goals updated successfully",
+            goal: updated,
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            message: error.message || "Failed to save goals",
+        });
+    }
+};
+exports.updateGoals = updateGoals;

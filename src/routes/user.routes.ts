@@ -6,12 +6,18 @@ import {
   editCandidate,
   exportUserReportCSV,
   exportUserReportExcel,
+  getAnalytics,
+  updateGoals,
 } from "../controllers/user.controller";
 import { authenticate, authorizeAdmin } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Require authorization for candidate management (ADMIN only)
+// ── Candidate Analytics & Goals (Authenticated Candidates Allowed) ───────────
+router.get("/analytics", authenticate, getAnalytics);
+router.put("/goals", authenticate, updateGoals);
+
+// ── Require authorization for candidate management (ADMIN only) ──────────────
 router.use(authenticate, authorizeAdmin);
 
 router.get("/", listCandidates);

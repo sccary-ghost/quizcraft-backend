@@ -85,7 +85,7 @@ export const uploadMedia = async (req: Request, res: Response) => {
     const filePath = path.join(uploadsDir, fileName);
     fs.writeFileSync(filePath, req.file.buffer);
 
-    const uploader = (req as any).user?.name || (req as any).user?.email || "Admin";
+    const uploader = req.user?.name || req.user?.email || "Admin";
 
     const media = await prisma.media.create({
       data: {

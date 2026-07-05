@@ -197,7 +197,7 @@ const getQuestionScoreConfig = (quiz, question) => {
                 };
             }
         }
-        catch (e) {
+        catch {
             // ignore
         }
     }

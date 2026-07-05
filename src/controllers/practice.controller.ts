@@ -10,7 +10,7 @@ import { logAuditAction } from "../utils/auditLogger";
 // 1. Generate Session
 export const createSession = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { source, filters, adaptive, options } = req.body;
 
     if (!source) {
@@ -32,7 +32,7 @@ export const createSession = async (req: Request, res: Response) => {
 // 2. Get Practice Stats
 export const getStats = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const stats = await getPracticeStats(userId);
     res.json(stats);
   } catch (error: any) {
@@ -43,7 +43,7 @@ export const getStats = async (req: Request, res: Response) => {
 // 3. Get Recommended Practice
 export const getRecommended = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const rec = await getRecommendations(userId);
     res.json(rec);
   } catch (error: any) {
@@ -54,7 +54,7 @@ export const getRecommended = async (req: Request, res: Response) => {
 // 4. Get Session Details (Including active resume index)
 export const getSessionDetails = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
 
     const session = await prisma.practiceSession.findFirst({
@@ -81,7 +81,7 @@ export const getSessionDetails = async (req: Request, res: Response) => {
 // 5. Submit Single Question Answer (For intermediate saves & resume compatibility)
 export const submitSessionAnswer = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const sessionId = req.params.id as string;
     const { questionId, selectedAnswer, timeSpent } = req.body;
 
@@ -108,7 +108,7 @@ export const submitSessionAnswer = async (req: Request, res: Response) => {
     const isCorrect = selectedAnswer ? selectedAnswer.trim() === question.correctAnswer.trim() : false;
 
     // Update PracticeSessionQuestion link
-    const psq = await prisma.practiceSessionQuestion.upsert({
+    await prisma.practiceSessionQuestion.upsert({
       where: {
         practiceSessionId_questionId: {
           practiceSessionId: sessionId,
@@ -200,7 +200,7 @@ export const submitSessionAnswer = async (req: Request, res: Response) => {
 // 6. Finish Practice Session
 export const finishSession = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const sessionId = req.params.id as string;
 
     const session = await prisma.practiceSession.findFirst({

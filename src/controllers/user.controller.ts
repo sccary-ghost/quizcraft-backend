@@ -241,7 +241,7 @@ export const exportUserReportExcel = async (req: Request, res: Response) => {
  */
 export const getAnalytics = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const range = (req.query.range as string) || "30d";
 
     const data = await getCandidateAnalytics(userId, range);
@@ -258,7 +258,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
  */
 export const updateGoals = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { targetAccuracy, weeklyPracticeGoal, monthlyTestGoal, questionsPerWeekGoal, isEnabled } = req.body;
 
     const updated = await prisma.userGoal.upsert({

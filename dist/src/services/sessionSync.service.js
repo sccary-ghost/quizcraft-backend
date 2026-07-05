@@ -7,7 +7,7 @@ exports.claimSession = exports.syncSession = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const client_1 = require("@prisma/client");
 const auditLogger_1 = require("../utils/auditLogger");
-const syncSession = async (userId, sessionId, type, payload, req // for audit logger usage
+const syncSession = async (userId, sessionId, type, payload, _req // for audit logger usage
 ) => {
     const now = new Date();
     if (type === "attempt") {

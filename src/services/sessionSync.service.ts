@@ -18,7 +18,7 @@ export const syncSession = async (
   sessionId: string,
   type: "attempt" | "practice",
   payload: SyncPayload,
-  req: any // for audit logger usage
+  _req: any // for audit logger usage
 ) => {
   const now = new Date();
 

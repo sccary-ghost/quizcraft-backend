@@ -20,7 +20,7 @@ const calculateNextRevision = (
 // 1. Add Bookmark
 export const addBookmark = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionId, testId } = req.body;
 
     if (!questionId) {
@@ -65,7 +65,7 @@ export const addBookmark = async (req: Request, res: Response) => {
 // 2. List Bookmarks with filters
 export const listBookmarks = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const {
       collectionId,
       subject,
@@ -138,7 +138,7 @@ export const listBookmarks = async (req: Request, res: Response) => {
 // 3. Remove/Delete Bookmarks (Single or Bulk)
 export const removeBookmarks = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { ids } = req.body; // Expects array of bookmark IDs or question IDs
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -165,7 +165,7 @@ export const removeBookmarks = async (req: Request, res: Response) => {
 // 4. Reset Bookmark Progress
 export const resetBookmarkProgress = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
 
     const bookmark = await prisma.bookmark.findFirst({
@@ -200,7 +200,7 @@ export const resetBookmarkProgress = async (req: Request, res: Response) => {
 // 5. Get Bookmark Statistics
 export const getBookmarkStats = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
 
     const bookmarks = await prisma.bookmark.findMany({
       where: { userId },
@@ -252,7 +252,7 @@ export const getBookmarkStats = async (req: Request, res: Response) => {
 // 6. Get Recommended Bookmarks (Spaced Repetitions)
 export const recommendedBookmarks = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const now = new Date();
 
     const dueRevisions = await prisma.bookmark.findMany({
@@ -295,7 +295,7 @@ export const recommendedBookmarks = async (req: Request, res: Response) => {
 // 7. Submit Single Practice Question Answer (Spaced Repetition Calculation)
 export const submitPracticeAnswer = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionId, isCorrect } = req.body;
 
     if (!questionId) {
@@ -353,7 +353,7 @@ export const submitPracticeAnswer = async (req: Request, res: Response) => {
 // 8. Submit Overall Practice Session Log
 export const submitPracticeLog = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionsCount, correctCount, score, timeSpent } = req.body;
 
     const log = await prisma.bookmarkPracticeLog.create({
@@ -395,7 +395,7 @@ export const getBatchQuestions = async (req: Request, res: Response) => {
 // 10. Manage Collections
 export const listCollections = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const collections = await prisma.bookmarkCollection.findMany({
       where: { userId },
       orderBy: { sortOrder: "asc" },
@@ -408,7 +408,7 @@ export const listCollections = async (req: Request, res: Response) => {
 
 export const addCollection = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { name, description, color, icon, sortOrder } = req.body;
 
     if (!name) return res.status(400).json({ message: "name is required" });
@@ -433,7 +433,7 @@ export const addCollection = async (req: Request, res: Response) => {
 // Bulk Assign bookmarks to collections
 export const assignBookmarksToCollection = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { bookmarkIds, collectionId, action } = req.body; // action: 'add' | 'remove' | 'move'
 
     if (!bookmarkIds || !Array.isArray(bookmarkIds) || !collectionId) {

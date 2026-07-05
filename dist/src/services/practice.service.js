@@ -9,7 +9,7 @@ const client_1 = require("@prisma/client");
 // 1. Generate Practice Session
 const generatePracticeSession = async (userId, source, filters = {}, adaptive = {}, options = {}) => {
     const limit = filters.limit || 20;
-    let candidateQuestionIds = [];
+    let candidateQuestionIds;
     // Step A: Aggregate candidates based on Source
     if (source === client_1.PracticeSource.BOOKMARKS) {
         const bookmarks = await prisma_1.default.bookmark.findMany({
@@ -49,7 +49,7 @@ const generatePracticeSession = async (userId, source, filters = {}, adaptive = 
         });
         const groupStats = {};
         allAnswers.forEach((ans) => {
-            let key = "";
+            let key;
             if (source === client_1.PracticeSource.WEAK_SUBJECTS)
                 key = ans.question.subject || "General";
             else if (source === client_1.PracticeSource.WEAK_CHAPTERS)
@@ -115,7 +115,7 @@ const generatePracticeSession = async (userId, source, filters = {}, adaptive = 
         whereFilters.topic = filters.topic;
     if (filters.quizId)
         whereFilters.quizId = filters.quizId;
-    let initialQuestions = await prisma_1.default.question.findMany({
+    const initialQuestions = await prisma_1.default.question.findMany({
         where: whereFilters,
     });
     // Step C: Apply Adaptive filtering based on student histories
@@ -153,7 +153,7 @@ const generatePracticeSession = async (userId, source, filters = {}, adaptive = 
             qh.lastIsCorrect = false;
         }
     });
-    let filtered = initialQuestions.filter((q) => {
+    const filtered = initialQuestions.filter((q) => {
         const qh = questionHistoryMap[q.id];
         // Adaptive checks
         if (adaptive.neverCorrect) {

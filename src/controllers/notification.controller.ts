@@ -4,7 +4,7 @@ import { NotificationType, NotificationPriority } from "@prisma/client";
 
 export const getMyNotifications = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const notifications = await prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -19,7 +19,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
 
 export const markRead = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
     await prisma.notification.updateMany({
       where: { id, userId },
@@ -33,7 +33,7 @@ export const markRead = async (req: Request, res: Response) => {
 
 export const markAllRead = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     await prisma.notification.updateMany({
       where: { userId, read: false },
       data: { read: true },
@@ -46,7 +46,7 @@ export const markAllRead = async (req: Request, res: Response) => {
 
 export const deleteNotification = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     await prisma.notification.deleteMany({ where: { id: req.params.id as string, userId } });
     res.json({ message: "Notification deleted" });
   } catch (e: any) {

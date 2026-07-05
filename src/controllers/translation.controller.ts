@@ -6,7 +6,7 @@ import { TranslationStatus, Language } from "@prisma/client";
 export const upsertTranslation = async (req: Request, res: Response) => {
   try {
     const questionId = req.params.id as string;
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { language, questionText, explanation, status, options } = req.body;
 
     if (!language || !questionText || !options || !Array.isArray(options)) {
@@ -192,7 +192,7 @@ export const exportTemplate = async (req: Request, res: Response) => {
 // 4. Bulk Import Translations
 export const importTranslations = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { items } = req.body; // Expect array of formatted objects
 
     if (!items || !Array.isArray(items)) {

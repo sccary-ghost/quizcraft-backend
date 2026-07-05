@@ -1,62 +1,42 @@
-# QuizCraft Backend
+# QuizCraft CBT Platform
 
-Backend API for QuizCraft CBT platform.
+QuizCraft is an enterprise-grade Computer Based Test (CBT) Platform designed for robust, scalable, and secure examination delivery. It features AI-powered content generation, online proctoring, detailed analytics, and comprehensive administrative controls.
 
-## Tech Stack
+## Architecture
 
-* Node.js
-* Express
-* TypeScript
-* Prisma
-* PostgreSQL
+QuizCraft is split into two primary repositories:
+- **Backend**: A Node.js / Express API utilizing Prisma ORM with PostgreSQL.
+- **Frontend**: A Next.js (React) application styled with TailwindCSS.
 
-## Features
+## Key Features
 
-* Authentication
-* Quiz APIs
-* Quiz Submission
-* Attempts
-* Answers
-* Analysis API
+- **AI Hub**: Automated question generation, distractor creation, and OCR cleanup via integrations with OpenAI, Gemini, and Claude.
+- **Proctoring**: Strict monitoring including tab tracking, full-screen enforcement, copy-paste prevention, and webcam face detection.
+- **Practice Center**: Personalized study tracks based on weak area analytics.
+- **Version Control**: Complete audit logs and version history for questions and quizzes.
+- **Review Workflow**: A structured pipeline ensuring content is vetted before publication.
 
-## Installation
+## Quick Start (Docker)
 
-```bash
-npm install
-```
+The fastest way to run QuizCraft locally is via Docker Compose:
 
-## Run Development Server
+1. Clone both repositories into adjacent directories.
+2. Ensure you have Docker and Docker Compose installed.
+3. In the root directory containing the `docker-compose.yml`, run:
+   ```bash
+   docker-compose up -d --build
+   ```
+4. Access the frontend at `http://localhost:3000` and the backend API at `http://localhost:5000`.
 
-```bash
-npm run dev
-```
+## Documentation
 
-Backend runs on:
+Comprehensive documentation can be found in the `docs/` directory:
+- [Architecture](docs/ARCHITECTURE.md)
+- [API Reference](docs/API.md)
+- [Database Schema](docs/DATABASE.md)
+- [Security Guidelines](docs/SECURITY.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Contributing](docs/CONTRIBUTING.md)
 
-```
-http://localhost:5000
-```
-
-## Environment Variables
-
-Create `.env`
-
-```env
-DATABASE_URL=your_database_url
-JWT_SECRET=your_secret_key
-PORT=5000
-```
-
-## Database
-
-Run:
-
-```bash
-npx prisma migrate dev
-```
-
-Start Prisma Studio:
-
-```bash
-npx prisma studio
-```
+## License
+Proprietary. All rights reserved.

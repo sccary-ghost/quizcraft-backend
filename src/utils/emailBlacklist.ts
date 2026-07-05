@@ -1,6 +1,3 @@
-import fs from "fs";
-import path from "path";
-
 // List of default disposable email domains that can be easily updated
 export const DISPOSABLE_EMAIL_BLACKLIST = [
   "mailinator.com",

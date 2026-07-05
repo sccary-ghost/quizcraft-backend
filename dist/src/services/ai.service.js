@@ -6,75 +6,119 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.rejectQuestion = exports.importQuestion = exports.approveQuestion = exports.getHistory = exports.suggestImprovements = exports.generateSimilarQuestion = exports.classifyBloom = exports.estimateDifficulty = exports.fixGrammar = exports.cleanOCR = exports.checkDuplicate = exports.generateDistractors = exports.translateToHindi = exports.generateExplanation = exports.generateQuestion = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const client_1 = require("@prisma/client");
-// ─── Provider-agnostic LLM caller ────────────────────────────────────────────
-async function callLLM(purpose, userContent, userId) {
-    // Load active provider config
-    const providerConfig = await prisma_1.default.aIProviderConfig.findFirst({
+const p_limit_1 = __importDefault(require("p-limit"));
+const aiConcurrencyLimit = (0, p_limit_1.default)(5);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function withRetry(fn, retries = 2, delay = 1000) {
+    try {
+        return await fn();
+    }
+    catch (err) {
+        if (retries === 0 || err.name === "AbortError")
+            throw err;
+        await sleep(delay);
+        return withRetry(fn, retries - 1, delay * 2);
+    }
+}
+async function callWithProvider(providerConfig, fullPrompt, signal) {
+    const provider = providerConfig.provider;
+    const apiKey = providerConfig.apiKey ?? process.env.GEMINI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
+    const modelName = providerConfig.modelName ?? "gemini-2.0-flash";
+    const temperature = providerConfig.temperature ?? 0.7;
+    const maxTokens = providerConfig.maxTokens ?? 2048;
+    let response = "";
+    let tokenUsage = 0;
+    if (provider === client_1.AIProvider.GEMINI) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: fullPrompt }] }],
+                generationConfig: { temperature, maxOutputTokens: maxTokens },
+            }),
+            signal,
+        });
+        if (!res.ok)
+            throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        response = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        tokenUsage = data?.usageMetadata?.totalTokenCount ?? 0;
+    }
+    else if (provider === client_1.AIProvider.OPENAI) {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: [{ role: "user", content: fullPrompt }],
+                temperature,
+                max_tokens: maxTokens,
+            }),
+            signal,
+        });
+        if (!res.ok)
+            throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        response = data?.choices?.[0]?.message?.content ?? "";
+        tokenUsage = data?.usage?.total_tokens ?? 0;
+    }
+    else if (provider === client_1.AIProvider.OLLAMA) {
+        const endpoint = providerConfig.endpoint ?? "http://localhost:11434";
+        const res = await fetch(`${endpoint}/api/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: modelName, prompt: fullPrompt, stream: false }),
+            signal,
+        });
+        if (!res.ok)
+            throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        response = data?.response ?? "";
+    }
+    return { response, tokenUsage };
+}
+async function callLLM(purpose, userContent, userId, externalSignal) {
+    const providers = await prisma_1.default.aIProviderConfig.findMany({
         where: { enabled: true },
         orderBy: { updatedAt: "desc" },
     });
-    const provider = providerConfig?.provider ?? client_1.AIProvider.GEMINI;
-    const apiKey = providerConfig?.apiKey ?? process.env.GEMINI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
-    const modelName = providerConfig?.modelName ?? "gemini-2.0-flash";
-    const temperature = providerConfig?.temperature ?? 0.7;
-    const maxTokens = providerConfig?.maxTokens ?? 2048;
-    // Load prompt template
+    if (providers.length === 0) {
+        throw new Error("No enabled AI providers found");
+    }
     const template = await prisma_1.default.aIPromptTemplate.findFirst({
         where: { purpose, enabled: true },
     });
     const systemPrompt = template?.prompt ?? getDefaultPrompt(purpose);
     const fullPrompt = `${systemPrompt}\n\nUser Input:\n${userContent}`;
     const startTime = Date.now();
-    let response = "";
-    let tokenUsage = 0;
+    let lastError;
+    // Setup timeout abort signal if no external signal is provided
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const signal = externalSignal ?? controller.signal;
     try {
-        if (provider === client_1.AIProvider.GEMINI) {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: fullPrompt }] }],
-                    generationConfig: { temperature, maxOutputTokens: maxTokens },
-                }),
-            });
-            const data = await res.json();
-            response = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-            tokenUsage = data?.usageMetadata?.totalTokenCount ?? 0;
-        }
-        else if (provider === client_1.AIProvider.OPENAI) {
-            const res = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    model: modelName,
-                    messages: [{ role: "user", content: fullPrompt }],
-                    temperature,
-                    max_tokens: maxTokens,
-                }),
-            });
-            const data = await res.json();
-            response = data?.choices?.[0]?.message?.content ?? "";
-            tokenUsage = data?.usage?.total_tokens ?? 0;
-        }
-        else if (provider === client_1.AIProvider.OLLAMA) {
-            const endpoint = providerConfig?.endpoint ?? "http://localhost:11434";
-            const res = await fetch(`${endpoint}/api/generate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ model: modelName, prompt: fullPrompt, stream: false }),
-            });
-            const data = await res.json();
-            response = data?.response ?? "";
+        for (const provider of providers) {
+            try {
+                const result = await withRetry(() => callWithProvider(provider, fullPrompt, signal));
+                const executionTime = Date.now() - startTime;
+                return { ...result, provider: provider.provider, executionTime };
+            }
+            catch (err) {
+                lastError = err;
+                if (err.name === "AbortError")
+                    throw err; // Don't fallback on timeout/client abort
+                console.warn(`Provider ${provider.provider} failed, trying next...`, err.message);
+                continue;
+            }
         }
     }
-    catch (err) {
-        throw new Error(`LLM call failed: ${err.message}`);
+    finally {
+        clearTimeout(timeoutId);
     }
-    const executionTime = Date.now() - startTime;
-    return { response, provider, tokenUsage, executionTime };
+    throw new Error(`All AI providers failed. Last error: ${lastError?.message}`);
 }
 // ─── Default system prompts (fallback if no template saved) ──────────────────
 function getDefaultPrompt(purpose) {
@@ -120,9 +164,9 @@ async function logRequest(userId, purpose, prompt, result, status) {
     });
 }
 // ─── AI Operations ────────────────────────────────────────────────────────────
-const generateQuestion = async (userId, topic, difficulty, subject, language = "English") => {
+const generateQuestion = (userId, topic, difficulty, subject, language = "English", signal) => aiConcurrencyLimit(async () => {
     const prompt = `Topic: ${topic}\nDifficulty: ${difficulty}\nSubject: ${subject}\nLanguage: ${language}`;
-    const result = await callLLM(client_1.AIPromptPurpose.QUESTION_GENERATION, prompt, userId);
+    const result = await callLLM(client_1.AIPromptPurpose.QUESTION_GENERATION, prompt, userId, signal);
     const log = await logRequest(userId, client_1.AIPromptPurpose.QUESTION_GENERATION, prompt, result, client_1.AIRequestStatus.SUCCESS);
     // Parse and persist generated question
     try {
@@ -147,7 +191,7 @@ const generateQuestion = async (userId, topic, difficulty, subject, language = "
     catch {
         return { log, generated: null, rawResponse: result.response };
     }
-};
+});
 exports.generateQuestion = generateQuestion;
 const generateExplanation = async (userId, questionText) => {
     const result = await callLLM(client_1.AIPromptPurpose.EXPLANATION, questionText, userId);

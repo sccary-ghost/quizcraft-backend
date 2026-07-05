@@ -99,7 +99,7 @@ const submitSessionAnswer = async (req, res) => {
         }
         const isCorrect = selectedAnswer ? selectedAnswer.trim() === question.correctAnswer.trim() : false;
         // Update PracticeSessionQuestion link
-        const psq = await prisma_1.default.practiceSessionQuestion.upsert({
+        await prisma_1.default.practiceSessionQuestion.upsert({
             where: {
                 practiceSessionId_questionId: {
                     practiceSessionId: sessionId,

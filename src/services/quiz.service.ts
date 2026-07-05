@@ -213,7 +213,7 @@ const getQuestionScoreConfig = (quiz: any, question: any) => {
           negativeMarks: config.negativeMarks ?? 1.0
         };
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }

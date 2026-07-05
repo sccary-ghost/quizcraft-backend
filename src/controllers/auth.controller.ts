@@ -263,7 +263,7 @@ export const logout = async (req: Request, res: Response) => {
 // Get profile controller (me)
 export const getMe = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -290,7 +290,7 @@ export const getMe = async (req: Request, res: Response) => {
 // Update personal details (Name only)
 export const updateProfile = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { name } = req.body;
 
     if (!name || name.trim().length === 0) {
@@ -323,7 +323,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 // Change Password
 export const changePassword = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { oldPassword, newPassword } = req.body;
 
     if (!oldPassword || !newPassword) {
@@ -360,7 +360,7 @@ export const changePassword = async (req: Request, res: Response) => {
 // Upload Profile Photo
 export const uploadProfilePhoto = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
@@ -375,7 +375,7 @@ export const uploadProfilePhoto = async (req: Request, res: Response) => {
 
     const profilePhotoUrl = `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
 
-    const updated = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: { profilePhoto: profilePhotoUrl },
     });
@@ -444,7 +444,7 @@ export const requestMobileChange = async (req: Request, res: Response) => {
 // Verify Mobile Change
 export const verifyMobileChange = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { newMobileNumber, otp } = req.body;
 
     if (!newMobileNumber || !otp) {
@@ -535,7 +535,7 @@ export const requestEmailChange = async (req: Request, res: Response) => {
 // Verify Email Change
 export const verifyEmailChange = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { newEmail, otp } = req.body;
 
     if (!newEmail || !otp) {
@@ -580,7 +580,7 @@ export const verifyEmailChange = async (req: Request, res: Response) => {
 // Get Active Sessions list
 export const getActiveSessions = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const currentToken = (req.headers.authorization?.split(" ")[1] || "") as string;
 
     const dbSessions = await prisma.session.findMany({
@@ -605,7 +605,7 @@ export const getActiveSessions = async (req: Request, res: Response) => {
 // Revoke/Terminating specific session
 export const revokeSession = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
 
     const session = await prisma.session.findFirst({

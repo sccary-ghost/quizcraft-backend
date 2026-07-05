@@ -8,7 +8,8 @@ const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const parseQuestionText_1 = require("./parseQuestionText");
 function cleanText(text) {
     return text
-        .replace(/\u0000/g, "")
+        // eslint-disable-next-line no-control-regex
+        .replace(/\x00/g, "")
         .replace(/\r/g, "")
         // remove branding / footer
         .replace(/aash education pvt\.?ltd\.?/gi, "")

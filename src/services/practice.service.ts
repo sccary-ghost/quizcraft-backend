@@ -33,7 +33,7 @@ export const generatePracticeSession = async (
   options: any = {}
 ) => {
   const limit = filters.limit || 20;
-  let candidateQuestionIds: string[] = [];
+  let candidateQuestionIds: string[];
 
   // Step A: Aggregate candidates based on Source
   if (source === PracticeSource.BOOKMARKS) {
@@ -74,7 +74,7 @@ export const generatePracticeSession = async (
 
     const groupStats: Record<string, { total: number; correct: number }> = {};
     allAnswers.forEach((ans) => {
-      let key = "";
+      let key: string;
       if (source === PracticeSource.WEAK_SUBJECTS) key = ans.question.subject || "General";
       else if (source === PracticeSource.WEAK_CHAPTERS) key = ans.question.chapter || "Uncategorized";
       else key = ans.question.topic || "Miscellaneous";
@@ -136,7 +136,7 @@ export const generatePracticeSession = async (
   if (filters.topic) whereFilters.topic = filters.topic;
   if (filters.quizId) whereFilters.quizId = filters.quizId;
 
-  let initialQuestions = await prisma.question.findMany({
+  const initialQuestions = await prisma.question.findMany({
     where: whereFilters,
   });
 
@@ -179,7 +179,7 @@ export const generatePracticeSession = async (
     }
   });
 
-  let filtered = initialQuestions.filter((q) => {
+  const filtered = initialQuestions.filter((q) => {
     const qh = questionHistoryMap[q.id];
     
     // Adaptive checks

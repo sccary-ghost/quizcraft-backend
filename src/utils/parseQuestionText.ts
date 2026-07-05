@@ -77,7 +77,7 @@ export function parseQuestionText(text: string) {
 
     // --- NEW: Answer Extraction Logic ---
     // Matches "Ans: a", "Answer: (b)", "उत्तर: c", "Ans - d", etc.
-    const answerMatch = line.match(/^(?:ans(?:wer)?|उत्तर|हल)[\s.:\-]*(\(?[a-d]\)?)/i);
+    const answerMatch = line.match(/^(?:ans(?:wer)?|उत्तर|हल)[\s.:-]*(\(?[a-d]\)?)/i);
     
     if (answerMatch) {
       // Clean the captured label to just 'a', 'b', 'c', or 'd'

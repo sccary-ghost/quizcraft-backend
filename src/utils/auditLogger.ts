@@ -18,9 +18,9 @@ export const logAuditAction = async (
 
   if (req) {
     // Read details from authenticate middleware
-    if ((req as any).user) {
-      userId = (req as any).user.userId || null;
-      userName = (req as any).user.email || (req as any).user.name || "System";
+    if (req.user!) {
+      userId = req.user!.userId || null;
+      userName = req.user!.email || req.user!.name || "System";
     }
 
     // Read client IP address

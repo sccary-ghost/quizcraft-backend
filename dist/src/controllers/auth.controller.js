@@ -340,7 +340,7 @@ const uploadProfilePhoto = async (req, res) => {
         const filePath = path_1.default.join(uploadsDir, fileName);
         fs_1.default.writeFileSync(filePath, req.file.buffer);
         const profilePhotoUrl = `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
-        const updated = await prisma_1.default.user.update({
+        await prisma_1.default.user.update({
             where: { id: userId },
             data: { profilePhoto: profilePhotoUrl },
         });

@@ -107,7 +107,7 @@ export const submit = async (req: Request, res: Response) => {
   try {
     const quizId = req.params.quizId as string;
     const { answers, questionTimes } = req.body; 
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
 
     // This must match the signature of the service function exactly
     const result = await submitQuiz(userId, quizId, answers, questionTimes || {});
@@ -124,7 +124,7 @@ export const getAttempt = async (req: Request, res: Response) => {
     if (!attempt) {
       return res.status(404).json({ message: "Attempt not found" });
     }
-    const user = (req as any).user;
+    const user = req.user!;
     if (user.role !== "ADMIN" && attempt.userId !== user.userId) {
       return res.status(403).json({ message: "Forbidden: You cannot access other candidates' attempts" });
     }
@@ -136,7 +136,7 @@ export const getAttempt = async (req: Request, res: Response) => {
 
 export const history = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const attempts = await getUserHistory(userId);
     res.json(attempts);
   } catch (error: any) {
@@ -255,48 +255,32 @@ export const getAdminStats = async (req: Request, res: Response) => {
   try {
     await updateQuizStatuses();
 
-    const totalQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false },
-    });
+    const [
+      totalQuizzes,
+      draftQuizzes,
+      scheduledQuizzes,
+      liveQuizzes,
+      completedQuizzes,
+      archivedQuizzes,
+      questionBank,
+      categoriesResult,
+      users,
+      trash
+    ] = await prisma.$transaction([
+      prisma.quiz.count({ where: { isDeleted: false } }),
+      prisma.quiz.count({ where: { isDeleted: false, status: "Draft" } }),
+      prisma.quiz.count({ where: { isDeleted: false, status: "Scheduled" } }),
+      prisma.quiz.count({ where: { isDeleted: false, status: "Live" } }),
+      prisma.quiz.count({ where: { isDeleted: false, status: "Completed" } }),
+      prisma.quiz.count({ where: { isDeleted: false, status: "Archived" } }),
+      prisma.question.count({ where: { isBank: true } }),
+      prisma.question.groupBy({ by: ["subject"], where: { isBank: true, subject: { not: null } } }),
+      prisma.user.count(),
+      prisma.quiz.count({ where: { isDeleted: true } })
+    ]);
 
-    const draftQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false, status: "Draft" },
-    });
-
-    const scheduledQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false, status: "Scheduled" },
-    });
-
-    const liveQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false, status: "Live" },
-    });
-
-    const completedQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false, status: "Completed" },
-    });
-
-    const archivedQuizzes = await prisma.quiz.count({
-      where: { isDeleted: false, status: "Archived" },
-    });
-
-    const questionBank = await prisma.question.count({
-      where: { isBank: true },
-    });
-
-    // Unique subjects as categories
-    const categoriesResult = await prisma.question.groupBy({
-      by: ["subject"],
-      where: { isBank: true, subject: { not: null } },
-    });
     const categories = categoriesResult.length;
-
     const folders = 0;
-
-    const users = await prisma.user.count();
-
-    const trash = await prisma.quiz.count({
-      where: { isDeleted: true },
-    });
 
     // Candidate Stats
     const totalCandidates = users;
@@ -380,7 +364,7 @@ export const updateQuizController = async (req: Request, res: Response) => {
 export const startAttempt = async (req: Request, res: Response) => {
   try {
     const quizId = req.params.quizId as string;
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const result = await startQuizAttempt(userId, quizId);
     res.json(result);
   } catch (error: any) {
@@ -497,7 +481,7 @@ export const importBackup = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid strategy. Must be 'merge' or 'overwrite'" });
     }
 
-    const currentAdminId = (req as any).user?.userId;
+    const currentAdminId = req.user?.userId;
     await importDatabaseBackup(backupData, strategy, currentAdminId);
 
     await logAuditAction(req, `Backup Restored (${strategy})`);
@@ -661,26 +645,25 @@ export const bulkEditQuestions = async (req: Request, res: Response) => {
 
     const { subject, chapter, topic, status } = updates;
 
-    for (const qId of questionIds) {
-      const q = await prisma.question.findUnique({
-        where: { id: qId }
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
+      const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
+      const questionsToUpdate = await prisma.question.findMany({
+        where: { id: { in: chunkIds } }
       });
-      if (!q) continue;
 
-      await updateQuestion(
-        qId,
-        q.question,
-        q.optionA,
-        q.optionB,
-        q.optionC,
-        q.optionD,
-        q.correctAnswer,
-        q.explanation,
-        subject !== undefined ? subject : q.subject,
-        chapter !== undefined ? chapter : q.chapter,
-        topic !== undefined ? topic : q.topic,
-        status !== undefined ? status : q.status,
-        q.tags
+      await prisma.$transaction(
+        questionsToUpdate.map((q) => {
+          return prisma.question.update({
+            where: { id: q.id },
+            data: {
+              subject: subject !== undefined ? subject : q.subject,
+              chapter: chapter !== undefined ? chapter : q.chapter,
+              topic: topic !== undefined ? topic : q.topic,
+              status: status !== undefined ? status : q.status,
+            }
+          });
+        })
       );
     }
 

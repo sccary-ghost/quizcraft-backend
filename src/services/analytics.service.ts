@@ -164,11 +164,11 @@ export const getCandidateAnalytics = async (
     const yesterdayStr = yesterday.toISOString().split("T")[0];
 
     // Compute Current daily streak
-    let streakDate = uniqueDates[0] === todayStr ? todayStr : uniqueDates[0] === yesterdayStr ? yesterdayStr : null;
+    const streakDate = uniqueDates[0] === todayStr ? todayStr : uniqueDates[0] === yesterdayStr ? yesterdayStr : null;
     
     if (streakDate) {
       currentDaily = 1;
-      let checkDate = new Date(streakDate);
+      const checkDate = new Date(streakDate);
       for (let i = 1; i < uniqueDates.length; i++) {
         checkDate.setDate(checkDate.getDate() - 1);
         const expected = checkDate.toISOString().split("T")[0];

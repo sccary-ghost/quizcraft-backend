@@ -3,7 +3,7 @@ import * as AIService from "../services/ai.service";
 
 export const generate = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { topic, difficulty, subject, language } = req.body;
     if (!topic) return res.status(400).json({ message: "topic is required" });
     const result = await AIService.generateQuestion(userId, topic, difficulty || "Medium", subject || "General", language);
@@ -13,7 +13,7 @@ export const generate = async (req: Request, res: Response) => {
 
 export const explain = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.generateExplanation(userId, questionText);
@@ -23,7 +23,7 @@ export const explain = async (req: Request, res: Response) => {
 
 export const translate = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { text } = req.body;
     if (!text) return res.status(400).json({ message: "text is required" });
     const result = await AIService.translateToHindi(userId, text);
@@ -33,7 +33,7 @@ export const translate = async (req: Request, res: Response) => {
 
 export const distractors = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { question, correctAnswer } = req.body;
     if (!question || !correctAnswer) return res.status(400).json({ message: "question and correctAnswer are required" });
     const result = await AIService.generateDistractors(userId, question, correctAnswer);
@@ -43,7 +43,7 @@ export const distractors = async (req: Request, res: Response) => {
 
 export const duplicateCheck = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.checkDuplicate(userId, questionText);
@@ -53,7 +53,7 @@ export const duplicateCheck = async (req: Request, res: Response) => {
 
 export const ocrClean = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { rawText } = req.body;
     if (!rawText) return res.status(400).json({ message: "rawText is required" });
     const result = await AIService.cleanOCR(userId, rawText);
@@ -63,7 +63,7 @@ export const ocrClean = async (req: Request, res: Response) => {
 
 export const grammarFix = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { text } = req.body;
     if (!text) return res.status(400).json({ message: "text is required" });
     const result = await AIService.fixGrammar(userId, text);
@@ -73,7 +73,7 @@ export const grammarFix = async (req: Request, res: Response) => {
 
 export const difficulty = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.estimateDifficulty(userId, questionText);
@@ -83,7 +83,7 @@ export const difficulty = async (req: Request, res: Response) => {
 
 export const bloom = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.classifyBloom(userId, questionText);
@@ -93,7 +93,7 @@ export const bloom = async (req: Request, res: Response) => {
 
 export const similar = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.generateSimilarQuestion(userId, questionText);
@@ -103,7 +103,7 @@ export const similar = async (req: Request, res: Response) => {
 
 export const improve = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { questionText } = req.body;
     if (!questionText) return res.status(400).json({ message: "questionText is required" });
     const result = await AIService.suggestImprovements(userId, questionText);
@@ -113,8 +113,8 @@ export const improve = async (req: Request, res: Response) => {
 
 export const history = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
-    const role = (req as any).user.role;
+    const userId = req.user!.userId;
+    const role = req.user!.role;
     const result = await AIService.getHistory(userId, role);
     res.json(result);
   } catch (e: any) { res.status(500).json({ message: e.message }); }

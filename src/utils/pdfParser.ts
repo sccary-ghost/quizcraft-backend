@@ -3,7 +3,8 @@ import { parseQuestionText } from "./parseQuestionText";
 
 function cleanText(text: string) {
   return text
-    .replace(/\u0000/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/\x00/g, "")
     .replace(/\r/g, "")
 
     // remove branding / footer

@@ -4,7 +4,7 @@ import { syncSession, claimSession } from "../services/sessionSync.service";
 
 export const syncState = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
     const { type, version, clientId, currentIndex, currentSectionId, markedForReview, visitedQuestions, warningCount, answers } = req.body;
 
@@ -37,7 +37,7 @@ export const syncState = async (req: Request, res: Response) => {
 
 export const claim = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const id = req.params.id as string;
     const { type, clientId } = req.body;
 
@@ -59,7 +59,7 @@ export const claim = async (req: Request, res: Response) => {
 // Check for active test or practice to prompt resume overlay widget
 export const getActive = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
 
     const activeAttempt = await prisma.attempt.findFirst({
       where: {

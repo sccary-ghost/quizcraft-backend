@@ -201,38 +201,20 @@ exports.getBankQuestions = getBankQuestions;
 const getAdminStats = async (req, res) => {
     try {
         await (0, quiz_service_1.updateQuizStatuses)();
-        const totalQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false },
-        });
-        const draftQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false, status: "Draft" },
-        });
-        const scheduledQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false, status: "Scheduled" },
-        });
-        const liveQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false, status: "Live" },
-        });
-        const completedQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false, status: "Completed" },
-        });
-        const archivedQuizzes = await prisma_1.default.quiz.count({
-            where: { isDeleted: false, status: "Archived" },
-        });
-        const questionBank = await prisma_1.default.question.count({
-            where: { isBank: true },
-        });
-        // Unique subjects as categories
-        const categoriesResult = await prisma_1.default.question.groupBy({
-            by: ["subject"],
-            where: { isBank: true, subject: { not: null } },
-        });
+        const [totalQuizzes, draftQuizzes, scheduledQuizzes, liveQuizzes, completedQuizzes, archivedQuizzes, questionBank, categoriesResult, users, trash] = await prisma_1.default.$transaction([
+            prisma_1.default.quiz.count({ where: { isDeleted: false } }),
+            prisma_1.default.quiz.count({ where: { isDeleted: false, status: "Draft" } }),
+            prisma_1.default.quiz.count({ where: { isDeleted: false, status: "Scheduled" } }),
+            prisma_1.default.quiz.count({ where: { isDeleted: false, status: "Live" } }),
+            prisma_1.default.quiz.count({ where: { isDeleted: false, status: "Completed" } }),
+            prisma_1.default.quiz.count({ where: { isDeleted: false, status: "Archived" } }),
+            prisma_1.default.question.count({ where: { isBank: true } }),
+            prisma_1.default.question.groupBy({ by: ["subject"], where: { isBank: true, subject: { not: null } } }),
+            prisma_1.default.user.count(),
+            prisma_1.default.quiz.count({ where: { isDeleted: true } })
+        ]);
         const categories = categoriesResult.length;
         const folders = 0;
-        const users = await prisma_1.default.user.count();
-        const trash = await prisma_1.default.quiz.count({
-            where: { isDeleted: true },
-        });
         // Candidate Stats
         const totalCandidates = users;
         const activeCandidates = await prisma_1.default.user.count({
@@ -580,13 +562,23 @@ const bulkEditQuestions = async (req, res) => {
             return res.status(400).json({ message: "updates object is required." });
         }
         const { subject, chapter, topic, status } = updates;
-        for (const qId of questionIds) {
-            const q = await prisma_1.default.question.findUnique({
-                where: { id: qId }
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
+            const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
+            const questionsToUpdate = await prisma_1.default.question.findMany({
+                where: { id: { in: chunkIds } }
             });
-            if (!q)
-                continue;
-            await (0, quiz_service_1.updateQuestion)(qId, q.question, q.optionA, q.optionB, q.optionC, q.optionD, q.correctAnswer, q.explanation, subject !== undefined ? subject : q.subject, chapter !== undefined ? chapter : q.chapter, topic !== undefined ? topic : q.topic, status !== undefined ? status : q.status, q.tags);
+            await prisma_1.default.$transaction(questionsToUpdate.map((q) => {
+                return prisma_1.default.question.update({
+                    where: { id: q.id },
+                    data: {
+                        subject: subject !== undefined ? subject : q.subject,
+                        chapter: chapter !== undefined ? chapter : q.chapter,
+                        topic: topic !== undefined ? topic : q.topic,
+                        status: status !== undefined ? status : q.status,
+                    }
+                });
+            }));
         }
         await (0, auditLogger_1.logAuditAction)(req, `Bulk edited ${questionIds.length} questions`);
         res.json({ message: "Questions bulk updated successfully." });

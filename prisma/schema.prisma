@@ -116,6 +116,10 @@ model Question {
   bookmarks     Bookmark[]
   practiceQuestions PracticeSessionQuestion[]
   translations  QuestionTranslation[]
+
+  @@index([quizId, isDeleted])
+  @@index([isBank, isDeleted])
+  @@index([subject, chapter, topic])
 }
 
 model ReviewComment {
@@ -183,6 +187,9 @@ model Attempt {
   session     AttemptSession?
   historyLogs SessionHistoryLog[]
   violations  ProctoringViolation[]
+
+  @@index([userId])
+  @@index([quizId])
 }
 
 model Answer {
@@ -194,6 +201,8 @@ model Answer {
   timeSpent      Int
   attempt        Attempt  @relation(fields: [attemptId], references: [id])
   question       Question @relation(fields: [questionId], references: [id])
+
+  @@index([attemptId])
 }
 
 model playing_with_neon {
@@ -211,6 +220,9 @@ model AuditLog {
   userAgent  String?
   action     String
   target     String?
+
+  @@index([timestamp])
+  @@index([userId])
 }
 
 model Folder {
@@ -337,6 +349,7 @@ model Bookmark {
   quiz                 Quiz?                @relation(fields: [quizId], references: [id], onDelete: SetNull)
 
   @@unique([userId, questionId])
+  @@index([userId, status])
 }
 
 model BookmarkPracticeLog {
@@ -383,6 +396,8 @@ model PracticeSession {
   user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshot       PracticeSessionSnapshot?
   historyLogs    SessionHistoryLog[]
+
+  @@index([userId])
 }
 
 model PracticeSessionQuestion {
@@ -474,6 +489,8 @@ model SessionHistoryLog {
 
   attempt    Attempt?         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   practice   PracticeSession? @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
 }
 
 enum Language {
@@ -652,6 +669,9 @@ model AIRequestLog {
 
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   generatedQuestion AIGeneratedQuestion?
+
+  @@index([userId])
+  @@index([purpose])
 }
 
 model AIGeneratedQuestion {
@@ -686,6 +706,8 @@ model ProctoringViolation {
   timestamp DateTime          @default(now())
 
   attempt   Attempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
 }
 
 // ─── Phase 19: Notification Model ─────────────────────────────────────────────
@@ -706,6 +728,9 @@ model Notification {
   createdAt   DateTime             @default(now())
 
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, isSent])
 }
 
 // ─── Phase 19: Organization Settings ─────────────────────────────────────────

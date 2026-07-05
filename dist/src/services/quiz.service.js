@@ -138,6 +138,11 @@ const getQuizById = async (quizId, isAdmin = false) => {
                 where: { isDeleted: false },
                 orderBy: {
                     createdAt: "asc"
+                },
+                include: {
+                    translations: {
+                        include: { options: true }
+                    }
                 }
             },
             sections: {

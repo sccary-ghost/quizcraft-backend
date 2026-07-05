@@ -29,6 +29,8 @@ model User {
   reviews      QuestionTranslation[] @relation("Reviewer")
   edits        TranslationRevision[]
   practiceSessions PracticeSession[]
+  aiLogs       AIRequestLog[]
+  notifications Notification[]
 }
 
 model OtpVerification {
@@ -64,6 +66,22 @@ model Quiz {
   questions        Question[]
   sections         Section[]
   bookmarks        Bookmark[]
+  // Proctoring configuration (Phase 19)
+  proctorEnabled          Boolean        @default(false)
+  proctorWebcam           Boolean        @default(false)
+  proctorFace             Boolean        @default(false)
+  proctorCopy             Boolean        @default(false)
+  proctorPaste            Boolean        @default(false)
+  proctorDevTools         Boolean        @default(false)
+  proctorMicrophone       Boolean        @default(false)
+  proctorIdle             Boolean        @default(false)
+  proctorRightClick       Boolean        @default(false)
+  proctorMaxTabSwitches   Int            @default(3)
+  proctorMaxFsExits       Int            @default(3)
+  proctorMaxFaceMissingSecs Int          @default(30)
+  proctorWarningLimit     Int            @default(5)
+  proctorViolationAction  ViolationAction @default(WARN)
+  proctorAutoSubmit       Boolean        @default(false)
 }
 
 model Question {
@@ -164,6 +182,7 @@ model Attempt {
   user        User     @relation(fields: [userId], references: [id])
   session     AttemptSession?
   historyLogs SessionHistoryLog[]
+  violations  ProctoringViolation[]
 }
 
 model Answer {
@@ -513,4 +532,213 @@ model TranslationRevision {
 
   translation   QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
   editedBy      User?               @relation(fields: [editedById], references: [id])
+}
+
+// ─── Phase 19: AI Enums ───────────────────────────────────────────────────────
+
+enum AIProvider {
+  OPENAI
+  GEMINI
+  CLAUDE
+  OLLAMA
+}
+
+enum AIRequestStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum AIPromptPurpose {
+  QUESTION_GENERATION
+  EXPLANATION
+  TRANSLATION
+  DISTRACTOR_GENERATION
+  DUPLICATE_CHECK
+  OCR_CLEANUP
+  GRAMMAR_FIX
+  DIFFICULTY_ESTIMATION
+  BLOOM_CLASSIFICATION
+  SIMILAR_QUESTION
+  QUESTION_IMPROVEMENT
+}
+
+// ─── Phase 19: Proctoring Enums ───────────────────────────────────────────────
+
+enum ProctoringType {
+  TAB_SWITCH
+  FULLSCREEN_EXIT
+  COPY
+  PASTE
+  RIGHT_CLICK
+  FACE_ABSENT
+  MULTIPLE_FACES
+  MICROPHONE_DISABLED
+  DEVTOOLS_OPEN
+  WINDOW_BLUR
+  IDLE_TIMEOUT
+}
+
+enum ViolationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ViolationAction {
+  WARN
+  PAUSE
+  AUTO_SUBMIT
+}
+
+// ─── Phase 19: Notification Enums ─────────────────────────────────────────────
+
+enum NotificationType {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+  ANNOUNCEMENT
+  OTP
+  TEST_REMINDER
+  RESULT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ─── Phase 19: AI Models ──────────────────────────────────────────────────────
+
+model AIProviderConfig {
+  id          String     @id @default(cuid())
+  provider    AIProvider @unique
+  apiKey      String?
+  endpoint    String?
+  modelName   String?
+  enabled     Boolean    @default(true)
+  temperature Float      @default(0.7)
+  maxTokens   Int        @default(2048)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model AIPromptTemplate {
+  id        String          @id @default(cuid())
+  name      String
+  purpose   AIPromptPurpose
+  prompt    String
+  provider  AIProvider      @default(GEMINI)
+  enabled   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model AIRequestLog {
+  id                String              @id @default(cuid())
+  userId            String
+  provider          AIProvider
+  purpose           AIPromptPurpose
+  prompt            String
+  response          String
+  tokenUsage        Int                 @default(0)
+  executionTime     Int                 @default(0)
+  status            AIRequestStatus
+  createdAt         DateTime            @default(now())
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedQuestion AIGeneratedQuestion?
+}
+
+model AIGeneratedQuestion {
+  id          String     @id @default(cuid())
+  requestId   String     @unique
+  question    String
+  optionA     String
+  optionB     String
+  optionC     String
+  optionD     String
+  answer      String
+  explanation String?
+  difficulty  Difficulty @default(MEDIUM)
+  subject     String?
+  topic       String?
+  approved    Boolean    @default(false)
+  imported    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+
+  request     AIRequestLog @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 19: Proctoring Models ──────────────────────────────────────────────
+
+model ProctoringViolation {
+  id        String            @id @default(cuid())
+  attemptId String
+  type      ProctoringType
+  screenshot String?
+  severity  ViolationSeverity @default(MEDIUM)
+  details   String?
+  timestamp DateTime          @default(now())
+
+  attempt   Attempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 19: Notification Model ─────────────────────────────────────────────
+
+model Notification {
+  id          String               @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        NotificationType
+  priority    NotificationPriority @default(LOW)
+  read        Boolean              @default(false)
+  actionUrl   String?
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  isSent      Boolean              @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime             @default(now())
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 19: Organization Settings ─────────────────────────────────────────
+
+model SystemSettings {
+  id                   String   @id @default("default")
+  orgName              String   @default("QuizCraft")
+  logo                 String?
+  favicon              String?
+  primaryColor         String   @default("#2563eb")
+  secondaryColor       String   @default("#1e293b")
+  timezone             String   @default("Asia/Kolkata")
+  defaultLanguage      String   @default("EN")
+  defaultTheme         String   @default("dark")
+  maintenanceMode      Boolean  @default(false)
+  maintenanceBanner    String?
+  footerText           String?
+  supportEmail         String?
+  supportPhone         String?
+  address              String?
+  website              String?
+  socialLinks          Json?
+  privacyPolicyUrl     String?
+  termsUrl             String?
+  passwordPolicy       Json?
+  emailTemplates       Json?
+  smsTemplates         Json?
+  otpSettings          Json?
+  registrationSettings Json?
+  smtpConfig           Json?
+  smsProviderConfig    Json?
+  storageProvider      String   @default("local")
+  storageConfig        Json?
+  backupSchedule       String?
+  sessionTimeout       Int      @default(3600)
 }

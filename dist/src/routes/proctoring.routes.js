@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const proctoring_controller_1 = require("../controllers/proctoring.controller");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticate);
+router.post("/:attemptId/violation", proctoring_controller_1.recordViolation);
+router.get("/:attemptId/violations", proctoring_controller_1.getViolations);
+router.get("/:attemptId/stats", proctoring_controller_1.getViolationStats);
+exports.default = router;

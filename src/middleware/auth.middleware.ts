@@ -17,7 +17,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as AuthUser;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ["HS256"] }) as AuthUser;
     
     req.user = decoded;
     next();

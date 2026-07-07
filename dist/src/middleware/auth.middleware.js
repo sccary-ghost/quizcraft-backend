@@ -17,7 +17,7 @@ const authenticate = (req, res, next) => {
             return res.status(401).json({ message: "No token provided or invalid format" });
         }
         const token = authHeader.split(" ")[1];
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
         req.user = decoded;
         next();
     }

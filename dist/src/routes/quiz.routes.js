@@ -7,7 +7,7 @@ const quiz_controller_1 = require("../controllers/quiz.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 // Master Question Bank Upload Route
-router.post("/upload", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, upload_middleware_1.upload.single("file"), bulkUpload_controller_1.uploadQuestions);
+router.post("/upload", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, upload_middleware_1.upload.single("file"), upload_middleware_1.validateMagicBytes, bulkUpload_controller_1.uploadQuestions);
 // Master Bank Explorer Routes
 router.get("/bank/questions", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, quiz_controller_1.getBankQuestions);
 router.post("/bank/questions/bulk-edit", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, quiz_controller_1.bulkEditQuestions);
@@ -16,7 +16,7 @@ router.post("/bank/questions/duplicates/resolve", auth_middleware_1.authenticate
 // Admin Stats Route
 router.get("/admin/stats", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, quiz_controller_1.getAdminStats);
 // Upload Image Route
-router.post("/upload-image", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, upload_middleware_1.upload.single("image"), quiz_controller_1.uploadImageController);
+router.post("/upload-image", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, upload_middleware_1.upload.single("image"), upload_middleware_1.validateMagicBytes, quiz_controller_1.uploadImageController);
 // Quiz CRUD & Administration
 router.post("/create", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, quiz_controller_1.create);
 router.put("/:quizId", auth_middleware_1.authenticate, auth_middleware_1.authorizeAdmin, quiz_controller_1.updateQuizController);

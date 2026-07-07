@@ -5,9 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const quiz_service_1 = require("../services/quiz.service");
 const prisma_1 = __importDefault(require("../utils/prisma"));
-jest.mock('../utils/prisma', () => ({
-    __esModule: true,
-    default: {
+jest.mock('../utils/prisma', () => {
+    const mPrisma = {
         quiz: {
             create: jest.fn(),
             findUnique: jest.fn(),
@@ -18,8 +17,13 @@ jest.mock('../utils/prisma', () => ({
             findFirst: jest.fn(),
             create: jest.fn(),
         }
-    }
-}));
+    };
+    mPrisma.$transaction = jest.fn(async (cb) => cb(mPrisma));
+    return {
+        __esModule: true,
+        default: mPrisma
+    };
+});
 describe('Quiz Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();

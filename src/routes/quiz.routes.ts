@@ -1,4 +1,4 @@
-import { upload } from "../middleware/upload.middleware";
+import { upload, validateMagicBytes } from "../middleware/upload.middleware";
 import { uploadQuestions } from "../controllers/bulkUpload.controller";
 import { Router } from "express";
 import {
@@ -45,6 +45,7 @@ router.post(
   authenticate,
   authorizeAdmin,
   upload.single("file"),
+  validateMagicBytes,
   uploadQuestions
 );
 
@@ -58,7 +59,7 @@ router.post("/bank/questions/duplicates/resolve", authenticate, authorizeAdmin, 
 router.get("/admin/stats", authenticate, authorizeAdmin, getAdminStats);
 
 // Upload Image Route
-router.post("/upload-image", authenticate, authorizeAdmin, upload.single("image"), uploadImageController);
+router.post("/upload-image", authenticate, authorizeAdmin, upload.single("image"), validateMagicBytes, uploadImageController);
 
 // Quiz CRUD & Administration
 router.post("/create", authenticate, authorizeAdmin, create);

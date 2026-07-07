@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middleware/upload.middleware";
+import { upload, validateMagicBytes } from "../middleware/upload.middleware";
 import {
   register,
   login,
@@ -42,7 +42,7 @@ router.get("/me", authenticate, getMe);
 // ── Candidate Self-Service Routes ────────────────────────────────────────────
 router.put("/profile", authenticate, validate(updateProfileSchema), updateProfile);
 router.put("/change-password", authenticate, validate(changePasswordSchema), changePassword);
-router.post("/profile-photo", authenticate, upload.single("photo"), uploadProfilePhoto);
+router.post("/profile-photo", authenticate, upload.single("photo"), validateMagicBytes, uploadProfilePhoto);
 
 // Phone change
 router.post("/change-mobile/request", authenticate, otpLimiter, validate(requestMobileChangeSchema), requestMobileChange);

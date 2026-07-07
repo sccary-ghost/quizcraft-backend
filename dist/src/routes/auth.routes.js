@@ -16,7 +16,7 @@ router.get("/me", auth_middleware_1.authenticate, auth_controller_1.getMe);
 // ── Candidate Self-Service Routes ────────────────────────────────────────────
 router.put("/profile", auth_middleware_1.authenticate, (0, validate_middleware_1.validate)(auth_validation_1.updateProfileSchema), auth_controller_1.updateProfile);
 router.put("/change-password", auth_middleware_1.authenticate, (0, validate_middleware_1.validate)(auth_validation_1.changePasswordSchema), auth_controller_1.changePassword);
-router.post("/profile-photo", auth_middleware_1.authenticate, upload_middleware_1.upload.single("photo"), auth_controller_1.uploadProfilePhoto);
+router.post("/profile-photo", auth_middleware_1.authenticate, upload_middleware_1.upload.single("photo"), upload_middleware_1.validateMagicBytes, auth_controller_1.uploadProfilePhoto);
 // Phone change
 router.post("/change-mobile/request", auth_middleware_1.authenticate, rateLimit_middleware_1.otpLimiter, (0, validate_middleware_1.validate)(auth_validation_1.requestMobileChangeSchema), auth_controller_1.requestMobileChange);
 router.post("/change-mobile/verify", auth_middleware_1.authenticate, (0, validate_middleware_1.validate)(auth_validation_1.verifyMobileChangeSchema), auth_controller_1.verifyMobileChange);

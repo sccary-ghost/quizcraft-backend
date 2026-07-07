@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middleware/upload.middleware";
+import { upload, validateMagicBytes } from "../middleware/upload.middleware";
 import {
   listMedia,
   uploadMedia,
@@ -17,9 +17,9 @@ const router = Router();
 router.use(authenticate, authorizeAdmin);
 
 router.get("/", listMedia);
-router.post("/upload", upload.single("file"), uploadMedia);
+router.post("/upload", upload.single("file"), validateMagicBytes, uploadMedia);
 router.put("/:id/rename", renameMedia);
-router.post("/:id/replace", upload.single("file"), replaceMedia);
+router.post("/:id/replace", upload.single("file"), validateMagicBytes, replaceMedia);
 router.get("/:id/download", downloadMedia);
 router.delete("/:id", deleteMedia);
 router.post("/bulk-delete", bulkDeleteMedia);

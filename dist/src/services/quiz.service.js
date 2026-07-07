@@ -3,8 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.importDatabaseBackup = exports.exportDatabaseBackup = exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.getTrashItems = exports.deleteQuizPermanently = exports.deleteQuestionPermanently = exports.restoreQuestion = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
+exports.resolveDuplicateQuestionsService = exports.bulkEditQuestionsService = exports.importDatabaseBackup = exports.exportDatabaseBackup = exports.startQuizAttempt = exports.updateQuiz = exports.restoreQuiz = exports.moveQuizToTrash = exports.getTrashItems = exports.deleteQuizPermanently = exports.deleteQuestionPermanently = exports.restoreQuestion = exports.deleteQuestion = exports.getReviewCommentsList = exports.addReviewComment = exports.updateQuestionStatus = exports.restoreQuestionRevision = exports.getQuestionVersionsList = exports.updateQuestion = exports.getUserHistory = exports.getAttemptById = exports.submitQuiz = exports.getAllQuizzes = exports.getQuizById = exports.addQuestion = exports.createQuiz = exports.updateQuizStatuses = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const client_1 = require("@prisma/client");
 const updateQuizStatuses = async () => {
     try {
         const now = new Date();
@@ -204,76 +205,80 @@ const getQuestionScoreConfig = (quiz, question) => {
     return { marks: 4.0, negativeMarks: 1.0 };
 };
 const submitQuiz = async (userId, quizId, answers, questionTimes = {}) => {
-    const quiz = await prisma_1.default.quiz.findUnique({
-        where: { id: quizId },
-        include: {
-            questions: {
-                where: { isDeleted: false }
+    return await prisma_1.default.$transaction(async (tx) => {
+        const quiz = await tx.quiz.findUnique({
+            where: { id: quizId },
+            include: {
+                questions: {
+                    where: { isDeleted: false }
+                },
+                sections: true
             },
-            sections: true
-        },
-    });
-    if (!quiz)
-        throw new Error("Quiz not found");
-    let score = 0;
-    let maxScore = 0;
-    quiz.questions.forEach((question, index) => {
-        const { marks, negativeMarks } = getQuestionScoreConfig(quiz, question);
-        maxScore += marks;
-        const selectedIndex = answers[index];
-        if (selectedIndex === null || selectedIndex === undefined)
-            return;
-        const options = [question.optionA, question.optionB, question.optionC, question.optionD];
-        const selectedText = options[selectedIndex]?.trim();
-        const correctText = question.correctAnswer?.trim();
-        if (selectedText && correctText && selectedText === correctText) {
-            score += marks;
+        });
+        if (!quiz)
+            throw new Error("Quiz not found");
+        let score = 0;
+        let maxScore = 0;
+        quiz.questions.forEach((question, index) => {
+            const { marks, negativeMarks } = getQuestionScoreConfig(quiz, question);
+            maxScore += marks;
+            const selectedIndex = answers[index];
+            if (selectedIndex === null || selectedIndex === undefined)
+                return;
+            const options = [question.optionA, question.optionB, question.optionC, question.optionD];
+            const selectedText = options[selectedIndex]?.trim();
+            const correctText = question.correctAnswer?.trim();
+            if (selectedText && correctText && selectedText === correctText) {
+                score += marks;
+            }
+            else if (selectedText) {
+                score -= negativeMarks;
+            }
+        });
+        const total = quiz.questions.length;
+        const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+        let attempt = await tx.attempt.findFirst({
+            where: {
+                userId,
+                quizId,
+                completed: false,
+            },
+        });
+        if (!attempt) {
+            // Verify if they already submitted to give a better error message
+            const alreadySubmitted = await tx.attempt.findFirst({
+                where: { userId, quizId, completed: true }
+            });
+            if (alreadySubmitted) {
+                throw new Error("Quiz has already been submitted.");
+            }
+            throw new Error("No active attempt found to submit.");
         }
-        else if (selectedText) {
-            score -= negativeMarks;
-        }
-    });
-    const total = quiz.questions.length;
-    const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
-    // Find an existing in-progress attempt to update
-    let attempt = await prisma_1.default.attempt.findFirst({
-        where: {
-            userId,
-            quizId,
-            completed: false,
-        },
-    });
-    if (attempt) {
-        attempt = await prisma_1.default.attempt.update({
+        attempt = await tx.attempt.update({
             where: { id: attempt.id },
             data: { score, percentage, completed: true, submittedAt: new Date() },
         });
         // Clear any previous answers for this attempt in case it was resumed
-        await prisma_1.default.answer.deleteMany({
+        await tx.answer.deleteMany({
             where: { attemptId: attempt.id },
         });
-    }
-    else {
-        attempt = await prisma_1.default.attempt.create({
-            data: { userId, quizId, score, percentage, completed: true },
+        await tx.answer.createMany({
+            data: quiz.questions.map((question, index) => {
+                const selectedIndex = answers[index];
+                const options = [question.optionA, question.optionB, question.optionC, question.optionD];
+                const selectedAnswer = selectedIndex === null || selectedIndex === undefined ? null : options[selectedIndex];
+                const isCorrect = !!selectedAnswer && !!question.correctAnswer && selectedAnswer.trim() === question.correctAnswer.trim();
+                return {
+                    attemptId: attempt.id,
+                    questionId: question.id,
+                    selectedAnswer,
+                    isCorrect,
+                    timeSpent: questionTimes[index] || 0,
+                };
+            }),
         });
-    }
-    await prisma_1.default.answer.createMany({
-        data: quiz.questions.map((question, index) => {
-            const selectedIndex = answers[index];
-            const options = [question.optionA, question.optionB, question.optionC, question.optionD];
-            const selectedAnswer = selectedIndex === null || selectedIndex === undefined ? null : options[selectedIndex];
-            const isCorrect = !!selectedAnswer && !!question.correctAnswer && selectedAnswer.trim() === question.correctAnswer.trim();
-            return {
-                attemptId: attempt.id,
-                questionId: question.id,
-                selectedAnswer,
-                isCorrect,
-                timeSpent: questionTimes[index] || 0,
-            };
-        }),
-    });
-    return { score, total, percentage, attemptId: attempt.id };
+        return { score, total, percentage, attemptId: attempt.id };
+    }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
 };
 exports.submitQuiz = submitQuiz;
 const getAttemptById = async (attemptId) => {
@@ -639,51 +644,48 @@ const updateQuiz = async (quizId, title, description, duration, sections, schedu
 exports.updateQuiz = updateQuiz;
 const startQuizAttempt = async (userId, quizId) => {
     await (0, exports.updateQuizStatuses)();
-    const quiz = await prisma_1.default.quiz.findUnique({
-        where: { id: quizId },
-    });
-    if (!quiz)
-        throw new Error("Quiz not found");
-    const now = new Date();
-    // If status is Draft, block students
-    if (quiz.status === "Draft") {
-        throw new Error("This test is currently a draft and cannot be attempted.");
-    }
-    // Validate start and end times
-    if (quiz.availabilityMode === "SCHEDULED") {
-        if (quiz.startDate && now < new Date(quiz.startDate)) {
-            throw new Error("This test has not started yet.");
+    return await prisma_1.default.$transaction(async (tx) => {
+        const quiz = await tx.quiz.findUnique({
+            where: { id: quizId },
+        });
+        if (!quiz)
+            throw new Error("Quiz not found");
+        const now = new Date();
+        if (quiz.status === "Draft") {
+            throw new Error("This test is currently a draft and cannot be attempted.");
         }
-        if (quiz.endDate && now > new Date(quiz.endDate)) {
-            throw new Error("This test has already ended.");
+        if (quiz.availabilityMode === "SCHEDULED") {
+            if (quiz.startDate && now < new Date(quiz.startDate)) {
+                throw new Error("This test has not started yet.");
+            }
+            if (quiz.endDate && now > new Date(quiz.endDate)) {
+                throw new Error("This test has already ended.");
+            }
         }
-    }
-    // Check if there is an attempt
-    const existingAttempt = await prisma_1.default.attempt.findFirst({
-        where: {
-            userId,
-            quizId,
-        },
-    });
-    if (existingAttempt) {
-        if (!existingAttempt.completed) {
+        const existingAttempt = await tx.attempt.findFirst({
+            where: {
+                userId,
+                quizId,
+                completed: false,
+            },
+        });
+        if (existingAttempt) {
             if (!quiz.resumeAllowed) {
                 throw new Error("Resume not allowed. This test cannot be continued.");
             }
             return { message: "Resuming attempt", attemptId: existingAttempt.id };
         }
-    }
-    // Create an in-progress attempt
-    const attempt = await prisma_1.default.attempt.create({
-        data: {
-            userId,
-            quizId,
-            score: 0,
-            percentage: 0,
-            completed: false,
-        },
-    });
-    return { message: "Attempt started successfully", attemptId: attempt.id };
+        const attempt = await tx.attempt.create({
+            data: {
+                userId,
+                quizId,
+                score: 0,
+                percentage: 0,
+                completed: false,
+            },
+        });
+        return { message: "Attempt started successfully", attemptId: attempt.id };
+    }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
 };
 exports.startQuizAttempt = startQuizAttempt;
 const exportDatabaseBackup = async () => {
@@ -810,3 +812,60 @@ const importDatabaseBackup = async (backupData, strategy, currentAdminId) => {
     }
 };
 exports.importDatabaseBackup = importDatabaseBackup;
+const bulkEditQuestionsService = async (questionIds, updates) => {
+    const { subject, chapter, topic, status } = updates;
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
+        const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
+        const questionsToUpdate = await prisma_1.default.question.findMany({
+            where: { id: { in: chunkIds } }
+        });
+        await prisma_1.default.$transaction(questionsToUpdate.map((q) => {
+            return prisma_1.default.question.update({
+                where: { id: q.id },
+                data: {
+                    subject: subject !== undefined ? subject : q.subject,
+                    chapter: chapter !== undefined ? chapter : q.chapter,
+                    topic: topic !== undefined ? topic : q.topic,
+                    status: status !== undefined ? status : q.status,
+                }
+            });
+        }));
+    }
+};
+exports.bulkEditQuestionsService = bulkEditQuestionsService;
+const resolveDuplicateQuestionsService = async (keptId, purgeIds) => {
+    await prisma_1.default.$transaction(async (tx) => {
+        await tx.answer.updateMany({
+            where: { questionId: { in: purgeIds } },
+            data: { questionId: keptId },
+        });
+        await tx.reviewComment.updateMany({
+            where: { questionId: { in: purgeIds } },
+            data: { questionId: keptId },
+        });
+        await tx.questionRevision.updateMany({
+            where: { questionId: { in: purgeIds } },
+            data: { questionId: keptId },
+        });
+        const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
+        if (keptQuestion) {
+            for (const pId of purgeIds) {
+                const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
+                if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
+                    await tx.question.update({
+                        where: { id: keptId },
+                        data: {
+                            quizId: purgedQuestion.quizId,
+                            sectionId: purgedQuestion.sectionId,
+                        },
+                    });
+                }
+            }
+        }
+        await tx.question.deleteMany({
+            where: { id: { in: purgeIds } },
+        });
+    });
+};
+exports.resolveDuplicateQuestionsService = resolveDuplicateQuestionsService;

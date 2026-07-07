@@ -1,4 +1,5 @@
 import prisma from "../utils/prisma";
+import { Prisma } from "@prisma/client";
 
 export const updateQuizStatuses = async () => {
   try {
@@ -226,79 +227,85 @@ export const submitQuiz = async (
   answers: (number | null)[],
   questionTimes: Record<number, number> = {}
 ) => {
-  const quiz = await prisma.quiz.findUnique({
-    where: { id: quizId },
-    include: { 
-      questions: {
-        where: { isDeleted: false }
+  return await prisma.$transaction(async (tx) => {
+    const quiz = await tx.quiz.findUnique({
+      where: { id: quizId },
+      include: { 
+        questions: {
+          where: { isDeleted: false }
+        },
+        sections: true
       },
-      sections: true
-    },
-  });
-  if (!quiz) throw new Error("Quiz not found");
+    });
+    if (!quiz) throw new Error("Quiz not found");
 
-  let score = 0;
-  let maxScore = 0;
-  quiz.questions.forEach((question, index) => {
-    const { marks, negativeMarks } = getQuestionScoreConfig(quiz, question);
-    maxScore += marks;
-    const selectedIndex = answers[index];
-    if (selectedIndex === null || selectedIndex === undefined) return;
-    const options = [question.optionA, question.optionB, question.optionC, question.optionD];
-    const selectedText = options[selectedIndex]?.trim();
-    const correctText = question.correctAnswer?.trim();
-    if (selectedText && correctText && selectedText === correctText) {
-      score += marks;
-    } else if (selectedText) {
-      score -= negativeMarks;
+    let score = 0;
+    let maxScore = 0;
+    quiz.questions.forEach((question, index) => {
+      const { marks, negativeMarks } = getQuestionScoreConfig(quiz, question);
+      maxScore += marks;
+      const selectedIndex = answers[index];
+      if (selectedIndex === null || selectedIndex === undefined) return;
+      const options = [question.optionA, question.optionB, question.optionC, question.optionD];
+      const selectedText = options[selectedIndex]?.trim();
+      const correctText = question.correctAnswer?.trim();
+      if (selectedText && correctText && selectedText === correctText) {
+        score += marks;
+      } else if (selectedText) {
+        score -= negativeMarks;
+      }
+    });
+
+    const total = quiz.questions.length;
+    const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+
+    let attempt = await tx.attempt.findFirst({
+      where: {
+        userId,
+        quizId,
+        completed: false,
+      },
+    });
+
+    if (!attempt) {
+      // Verify if they already submitted to give a better error message
+      const alreadySubmitted = await tx.attempt.findFirst({
+        where: { userId, quizId, completed: true }
+      });
+      if (alreadySubmitted) {
+        throw new Error("Quiz has already been submitted.");
+      }
+      throw new Error("No active attempt found to submit.");
     }
-  });
 
-  const total = quiz.questions.length;
-  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
-
-  // Find an existing in-progress attempt to update
-  let attempt = await prisma.attempt.findFirst({
-    where: {
-      userId,
-      quizId,
-      completed: false,
-    },
-  });
-
-  if (attempt) {
-    attempt = await prisma.attempt.update({
+    attempt = await tx.attempt.update({
       where: { id: attempt.id },
       data: { score, percentage, completed: true, submittedAt: new Date() },
     });
     
     // Clear any previous answers for this attempt in case it was resumed
-    await prisma.answer.deleteMany({
+    await tx.answer.deleteMany({
       where: { attemptId: attempt.id },
     });
-  } else {
-    attempt = await prisma.attempt.create({
-      data: { userId, quizId, score, percentage, completed: true },
+
+    await tx.answer.createMany({
+      data: quiz.questions.map((question, index) => {
+        const selectedIndex = answers[index];
+        const options = [question.optionA, question.optionB, question.optionC, question.optionD];
+        const selectedAnswer = selectedIndex === null || selectedIndex === undefined ? null : options[selectedIndex];
+        const isCorrect = !!selectedAnswer && !!question.correctAnswer && selectedAnswer.trim() === question.correctAnswer.trim();
+        return {
+          attemptId: attempt!.id,
+          questionId: question.id,
+          selectedAnswer,
+          isCorrect,
+          timeSpent: questionTimes[index] || 0,
+        };
+      }),
     });
-  }
 
-  await prisma.answer.createMany({
-    data: quiz.questions.map((question, index) => {
-      const selectedIndex = answers[index];
-      const options = [question.optionA, question.optionB, question.optionC, question.optionD];
-      const selectedAnswer = selectedIndex === null || selectedIndex === undefined ? null : options[selectedIndex];
-      const isCorrect = !!selectedAnswer && !!question.correctAnswer && selectedAnswer.trim() === question.correctAnswer.trim();
-      return {
-        attemptId: attempt.id,
-        questionId: question.id,
-        selectedAnswer,
-        isCorrect,
-        timeSpent: questionTimes[index] || 0,
-      };
-    }),
-  });
-
-  return { score, total, percentage, attemptId: attempt.id };
+    return { score, total, percentage, attemptId: attempt.id };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 };
 
 export const getAttemptById = async (attemptId: string) => {
@@ -400,7 +407,7 @@ export const updateQuestion = async (
       subject: subject !== undefined ? subject : current.subject,
       chapter: chapter !== undefined ? chapter : current.chapter,
       topic: topic !== undefined ? topic : current.topic,
-      status: newStatus,
+      status: newStatus as any,
       version: nextVersion,
       tags: tags !== undefined ? (tags || []) : current.tags,
     },
@@ -713,58 +720,55 @@ export const updateQuiz = async (
 export const startQuizAttempt = async (userId: string, quizId: string) => {
   await updateQuizStatuses();
 
-  const quiz = await prisma.quiz.findUnique({
-    where: { id: quizId },
-  });
+  return await prisma.$transaction(async (tx) => {
+    const quiz = await tx.quiz.findUnique({
+      where: { id: quizId },
+    });
 
-  if (!quiz) throw new Error("Quiz not found");
+    if (!quiz) throw new Error("Quiz not found");
 
-  const now = new Date();
+    const now = new Date();
 
-  // If status is Draft, block students
-  if (quiz.status === "Draft") {
-    throw new Error("This test is currently a draft and cannot be attempted.");
-  }
-
-  // Validate start and end times
-  if (quiz.availabilityMode === "SCHEDULED") {
-    if (quiz.startDate && now < new Date(quiz.startDate)) {
-      throw new Error("This test has not started yet.");
+    if (quiz.status === "Draft") {
+      throw new Error("This test is currently a draft and cannot be attempted.");
     }
-    if (quiz.endDate && now > new Date(quiz.endDate)) {
-      throw new Error("This test has already ended.");
+
+    if (quiz.availabilityMode === "SCHEDULED") {
+      if (quiz.startDate && now < new Date(quiz.startDate)) {
+        throw new Error("This test has not started yet.");
+      }
+      if (quiz.endDate && now > new Date(quiz.endDate)) {
+        throw new Error("This test has already ended.");
+      }
     }
-  }
 
-  // Check if there is an attempt
-  const existingAttempt = await prisma.attempt.findFirst({
-    where: {
-      userId,
-      quizId,
-    },
-  });
+    const existingAttempt = await tx.attempt.findFirst({
+      where: {
+        userId,
+        quizId,
+        completed: false,
+      },
+    });
 
-  if (existingAttempt) {
-    if (!existingAttempt.completed) {
+    if (existingAttempt) {
       if (!quiz.resumeAllowed) {
         throw new Error("Resume not allowed. This test cannot be continued.");
       }
       return { message: "Resuming attempt", attemptId: existingAttempt.id };
     }
-  }
 
-  // Create an in-progress attempt
-  const attempt = await prisma.attempt.create({
-    data: {
-      userId,
-      quizId,
-      score: 0,
-      percentage: 0,
-      completed: false,
-    },
-  });
+    const attempt = await tx.attempt.create({
+      data: {
+        userId,
+        quizId,
+        score: 0,
+        percentage: 0,
+        completed: false,
+      },
+    });
 
-  return { message: "Attempt started successfully", attemptId: attempt.id };
+    return { message: "Attempt started successfully", attemptId: attempt.id };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 };
 
 export const exportDatabaseBackup = async () => {
@@ -917,4 +921,72 @@ export const importDatabaseBackup = async (
     await mergeModel("answer", answers);
     await mergeModel("auditLog", auditLogs);
   }
+};
+
+export const bulkEditQuestionsService = async (
+  questionIds: string[],
+  updates: { subject?: string; chapter?: string; topic?: string; status?: string }
+) => {
+  const { subject, chapter, topic, status } = updates;
+  const CHUNK_SIZE = 50;
+  
+  for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
+    const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
+    const questionsToUpdate = await prisma.question.findMany({
+      where: { id: { in: chunkIds } }
+    });
+
+    await prisma.$transaction(
+      questionsToUpdate.map((q) => {
+        return prisma.question.update({
+          where: { id: q.id },
+          data: {
+            subject: subject !== undefined ? subject : q.subject,
+            chapter: chapter !== undefined ? chapter : q.chapter,
+            topic: topic !== undefined ? topic : q.topic,
+            status: status !== undefined ? (status as any) : q.status,
+          }
+        });
+      })
+    );
+  }
+};
+
+export const resolveDuplicateQuestionsService = async (keptId: string, purgeIds: string[]) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.answer.updateMany({
+      where: { questionId: { in: purgeIds } },
+      data: { questionId: keptId },
+    });
+
+    await tx.reviewComment.updateMany({
+      where: { questionId: { in: purgeIds } },
+      data: { questionId: keptId },
+    });
+
+    await tx.questionRevision.updateMany({
+      where: { questionId: { in: purgeIds } },
+      data: { questionId: keptId },
+    });
+
+    const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
+    if (keptQuestion) {
+      for (const pId of purgeIds) {
+        const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
+        if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
+          await tx.question.update({
+            where: { id: keptId },
+            data: {
+              quizId: purgedQuestion.quizId,
+              sectionId: purgedQuestion.sectionId,
+            },
+          });
+        }
+      }
+    }
+
+    await tx.question.deleteMany({
+      where: { id: { in: purgeIds } },
+    });
+  });
 };

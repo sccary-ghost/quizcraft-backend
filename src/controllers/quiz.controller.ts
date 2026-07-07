@@ -497,48 +497,64 @@ export const exportQuizReportCSV = async (req: Request, res: Response) => {
     const quizId = req.params.quizId as string;
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
-      include: {
-        attempts: {
-          include: {
-            user: true,
-          },
-          orderBy: { submittedAt: "desc" },
-        },
-      },
     });
 
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    const csvRows = [];
-    csvRows.push(`"Quiz Performance Report"`);
-    csvRows.push(`"Quiz Title","${quiz.title.replace(/"/g, '""')}"`);
-    csvRows.push(`"Duration","${quiz.duration} minutes"`);
-    csvRows.push(`"Exported At","${new Date().toLocaleString()}"`);
-    csvRows.push("");
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.csv`);
+    
+    // Write headers
+    res.write(`"Quiz Performance Report"\n`);
+    res.write(`"Quiz Title","${quiz.title.replace(/"/g, '""')}"\n`);
+    res.write(`"Duration","${quiz.duration} minutes"\n`);
+    res.write(`"Exported At","${new Date().toLocaleString()}"\n\n`);
+    res.write(`"Candidate Name","Email","Mobile Number","Score","Percentage (%)","Submitted At","Status"\n`);
 
-    csvRows.push(`"Candidate Name","Email","Mobile Number","Score","Percentage (%)","Submitted At","Status"`);
+    // Stream attempts using cursor pagination to avoid OOM
+    let hasMore = true;
+    let skip = 0;
+    const TAKE = 500;
 
-    for (const att of quiz.attempts) {
-      const name = att.user.name || "N/A";
-      const email = att.user.email || "N/A";
-      const mobile = att.user.mobileNumber || "N/A";
-      const score = att.score;
-      const percentage = att.percentage.toFixed(2);
-      const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
-      const status = att.completed ? "Completed" : "Ongoing";
+    while (hasMore) {
+      const attempts = await prisma.attempt.findMany({
+        where: { quizId },
+        include: { user: true },
+        orderBy: { submittedAt: "desc" },
+        skip,
+        take: TAKE,
+      });
 
-      csvRows.push(`"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${mobile.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"`);
+      if (attempts.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const att of attempts) {
+        const name = att.user.name || "N/A";
+        const email = att.user.email || "N/A";
+        const mobile = att.user.mobileNumber || "N/A";
+        const score = att.score;
+        const percentage = att.percentage.toFixed(2);
+        const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+        const status = att.completed ? "Completed" : "Ongoing";
+
+        res.write(`"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${mobile.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"\n`);
+      }
+
+      skip += TAKE;
     }
 
     await logAuditAction(req, "Test Report Exported (CSV)", quizId);
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.csv`);
-    res.send(csvRows.join("\n"));
+    res.end();
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.end();
+    }
   }
 };
 
@@ -547,21 +563,16 @@ export const exportQuizReportExcel = async (req: Request, res: Response) => {
     const quizId = req.params.quizId as string;
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
-      include: {
-        attempts: {
-          include: {
-            user: true,
-          },
-          orderBy: { submittedAt: "desc" },
-        },
-      },
     });
 
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    let html = `
+    res.setHeader("Content-Type", "application/vnd.ms-excel");
+    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.xls`);
+
+    res.write(`
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
@@ -590,44 +601,65 @@ export const exportQuizReportExcel = async (req: Request, res: Response) => {
             </tr>
           </thead>
           <tbody>
-    `;
+    `);
 
-    for (const att of quiz.attempts) {
-      const name = att.user.name || "N/A";
-      const email = att.user.email || "N/A";
-      const mobile = att.user.mobileNumber || "N/A";
-      const score = att.score;
-      const percentage = att.percentage.toFixed(2);
-      const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
-      const status = att.completed ? "Completed" : "Ongoing";
+    let hasMore = true;
+    let skip = 0;
+    const TAKE = 500;
 
-      html += `
-        <tr>
-          <td>${name}</td>
-          <td>${email}</td>
-          <td>${mobile}</td>
-          <td>${score}</td>
-          <td>${percentage}</td>
-          <td>${date}</td>
-          <td>${status}</td>
-        </tr>
-      `;
+    while (hasMore) {
+      const attempts = await prisma.attempt.findMany({
+        where: { quizId },
+        include: { user: true },
+        orderBy: { submittedAt: "desc" },
+        skip,
+        take: TAKE,
+      });
+
+      if (attempts.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const att of attempts) {
+        const name = att.user.name || "N/A";
+        const email = att.user.email || "N/A";
+        const mobile = att.user.mobileNumber || "N/A";
+        const score = att.score;
+        const percentage = att.percentage.toFixed(2);
+        const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+        const status = att.completed ? "Completed" : "Ongoing";
+
+        res.write(`
+          <tr>
+            <td>${name}</td>
+            <td>${email}</td>
+            <td>${mobile}</td>
+            <td>${score}</td>
+            <td>${percentage}</td>
+            <td>${date}</td>
+            <td>${status}</td>
+          </tr>
+        `);
+      }
+      skip += TAKE;
     }
 
-    html += `
+    res.write(`
           </tbody>
         </table>
       </body>
       </html>
-    `;
+    `);
 
     await logAuditAction(req, "Test Report Exported (Excel)", quizId);
-
-    res.setHeader("Content-Type", "application/vnd.ms-excel");
-    res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.xls`);
-    res.send(html);
+    res.end();
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.end();
+    }
   }
 };
 
@@ -638,37 +670,15 @@ export const bulkEditQuestions = async (req: Request, res: Response) => {
     if (!Array.isArray(questionIds) || questionIds.length === 0) {
       return res.status(400).json({ message: "questionIds array is required." });
     }
-
     if (!updates || typeof updates !== "object") {
       return res.status(400).json({ message: "updates object is required." });
     }
 
-    const { subject, chapter, topic, status } = updates;
-
-    const CHUNK_SIZE = 50;
-    for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
-      const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
-      const questionsToUpdate = await prisma.question.findMany({
-        where: { id: { in: chunkIds } }
-      });
-
-      await prisma.$transaction(
-        questionsToUpdate.map((q) => {
-          return prisma.question.update({
-            where: { id: q.id },
-            data: {
-              subject: subject !== undefined ? subject : q.subject,
-              chapter: chapter !== undefined ? chapter : q.chapter,
-              topic: topic !== undefined ? topic : q.topic,
-              status: status !== undefined ? status : q.status,
-            }
-          });
-        })
-      );
-    }
+    // Delegate to service
+    const { bulkEditQuestionsService } = await import("../services/quiz.service");
+    await bulkEditQuestionsService(questionIds, updates);
 
     await logAuditAction(req, `Bulk edited ${questionIds.length} questions`);
-
     res.json({ message: "Questions bulk updated successfully." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -681,7 +691,6 @@ export const getDuplicateQuestions = async (req: Request, res: Response) => {
       where: { isBank: true },
       orderBy: { createdAt: "desc" },
     });
-
     const duplicateGroups = findDuplicates(questions, 0.85);
     res.json(duplicateGroups);
   } catch (error: any) {
@@ -697,42 +706,9 @@ export const resolveDuplicateQuestions = async (req: Request, res: Response) => 
       return res.status(400).json({ message: "keptId and purgeIds array are required." });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.answer.updateMany({
-        where: { questionId: { in: purgeIds } },
-        data: { questionId: keptId },
-      });
-
-      await tx.reviewComment.updateMany({
-        where: { questionId: { in: purgeIds } },
-        data: { questionId: keptId },
-      });
-
-      await tx.questionRevision.updateMany({
-        where: { questionId: { in: purgeIds } },
-        data: { questionId: keptId },
-      });
-
-      const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
-      if (keptQuestion) {
-        for (const pId of purgeIds) {
-          const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
-          if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
-            await tx.question.update({
-              where: { id: keptId },
-              data: {
-                quizId: purgedQuestion.quizId,
-                sectionId: purgedQuestion.sectionId,
-              },
-            });
-          }
-        }
-      }
-
-      await tx.question.deleteMany({
-        where: { id: { in: purgeIds } },
-      });
-    });
+    // Delegate to service
+    const { resolveDuplicateQuestionsService } = await import("../services/quiz.service");
+    await resolveDuplicateQuestionsService(keptId, purgeIds);
 
     await logAuditAction(req, `Resolved duplicates: kept ${keptId}, purged ${purgeIds.length} items`);
     res.json({ message: "Duplicates resolved successfully." });

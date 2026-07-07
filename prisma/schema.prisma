@@ -43,6 +43,22 @@ model OtpVerification {
   lastRequestedAt DateTime @default(now())
 }
 
+enum QuizStatus {
+  Draft
+  Scheduled
+  Live
+  Completed
+  Archived
+}
+
+enum QuestionStatus {
+  Draft
+  Review
+  Approved
+  Published
+  Rejected
+}
+
 model Quiz {
   id               String     @id @default(cuid())
   title            String
@@ -51,7 +67,7 @@ model Quiz {
   startDate        DateTime?
   endDate          DateTime?
   timezone         String?     @default("Asia/Kolkata")
-  status           String      @default("Draft")
+  status           QuizStatus  @default(Draft)
   resumeAllowed    Boolean     @default(true)
   availabilityMode String      @default("IMMEDIATE")
   hideUntilStart   Boolean     @default(false)
@@ -100,7 +116,7 @@ model Question {
   topic         String?  // Naya: Filter ke liye
   isBank        Boolean  @default(false) // Naya: Master bank identify karne ke liye
   version       Int      @default(1)
-  status        String   @default("Draft")
+  status        QuestionStatus @default(Draft)
   tags          String[] @default([])
   isDeleted     Boolean  @default(false)
   deletedAt     DateTime?
@@ -146,7 +162,7 @@ model QuestionRevision {
   subject       String?
   chapter       String?
   topic         String?
-  status        String   @default("Draft")
+  status        QuestionStatus @default(Draft)
   tags          String[] @default([])
   createdAt     DateTime @default(now())
   difficulty    Difficulty @default(MEDIUM)
@@ -273,6 +289,8 @@ model EmailOtpVerification {
   otpHash    String
   expiresAt  DateTime
   attempts   Int      @default(0)
+  resendCount Int     @default(1)
+  lastRequestedAt DateTime @default(now())
   createdAt  DateTime @default(now())
 }
 
@@ -362,6 +380,8 @@ model BookmarkPracticeLog {
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
 }
 
 enum PracticeSource {
@@ -398,6 +418,7 @@ model PracticeSession {
   historyLogs    SessionHistoryLog[]
 
   @@index([userId])
+  @@index([state])
 }
 
 model PracticeSessionQuestion {

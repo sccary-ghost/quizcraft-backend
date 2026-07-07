@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -430,42 +463,56 @@ const exportQuizReportCSV = async (req, res) => {
         const quizId = req.params.quizId;
         const quiz = await prisma_1.default.quiz.findUnique({
             where: { id: quizId },
-            include: {
-                attempts: {
-                    include: {
-                        user: true,
-                    },
-                    orderBy: { submittedAt: "desc" },
-                },
-            },
         });
         if (!quiz) {
             return res.status(404).json({ message: "Quiz not found" });
         }
-        const csvRows = [];
-        csvRows.push(`"Quiz Performance Report"`);
-        csvRows.push(`"Quiz Title","${quiz.title.replace(/"/g, '""')}"`);
-        csvRows.push(`"Duration","${quiz.duration} minutes"`);
-        csvRows.push(`"Exported At","${new Date().toLocaleString()}"`);
-        csvRows.push("");
-        csvRows.push(`"Candidate Name","Email","Mobile Number","Score","Percentage (%)","Submitted At","Status"`);
-        for (const att of quiz.attempts) {
-            const name = att.user.name || "N/A";
-            const email = att.user.email || "N/A";
-            const mobile = att.user.mobileNumber || "N/A";
-            const score = att.score;
-            const percentage = att.percentage.toFixed(2);
-            const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
-            const status = att.completed ? "Completed" : "Ongoing";
-            csvRows.push(`"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${mobile.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"`);
-        }
-        await (0, auditLogger_1.logAuditAction)(req, "Test Report Exported (CSV)", quizId);
         res.setHeader("Content-Type", "text/csv");
         res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.csv`);
-        res.send(csvRows.join("\n"));
+        // Write headers
+        res.write(`"Quiz Performance Report"\n`);
+        res.write(`"Quiz Title","${quiz.title.replace(/"/g, '""')}"\n`);
+        res.write(`"Duration","${quiz.duration} minutes"\n`);
+        res.write(`"Exported At","${new Date().toLocaleString()}"\n\n`);
+        res.write(`"Candidate Name","Email","Mobile Number","Score","Percentage (%)","Submitted At","Status"\n`);
+        // Stream attempts using cursor pagination to avoid OOM
+        let hasMore = true;
+        let skip = 0;
+        const TAKE = 500;
+        while (hasMore) {
+            const attempts = await prisma_1.default.attempt.findMany({
+                where: { quizId },
+                include: { user: true },
+                orderBy: { submittedAt: "desc" },
+                skip,
+                take: TAKE,
+            });
+            if (attempts.length === 0) {
+                hasMore = false;
+                break;
+            }
+            for (const att of attempts) {
+                const name = att.user.name || "N/A";
+                const email = att.user.email || "N/A";
+                const mobile = att.user.mobileNumber || "N/A";
+                const score = att.score;
+                const percentage = att.percentage.toFixed(2);
+                const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+                const status = att.completed ? "Completed" : "Ongoing";
+                res.write(`"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${mobile.replace(/"/g, '""')}",${score},${percentage},"${date}","${status}"\n`);
+            }
+            skip += TAKE;
+        }
+        await (0, auditLogger_1.logAuditAction)(req, "Test Report Exported (CSV)", quizId);
+        res.end();
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        if (!res.headersSent) {
+            res.status(500).json({ message: error.message });
+        }
+        else {
+            res.end();
+        }
     }
 };
 exports.exportQuizReportCSV = exportQuizReportCSV;
@@ -474,19 +521,13 @@ const exportQuizReportExcel = async (req, res) => {
         const quizId = req.params.quizId;
         const quiz = await prisma_1.default.quiz.findUnique({
             where: { id: quizId },
-            include: {
-                attempts: {
-                    include: {
-                        user: true,
-                    },
-                    orderBy: { submittedAt: "desc" },
-                },
-            },
         });
         if (!quiz) {
             return res.status(404).json({ message: "Quiz not found" });
         }
-        let html = `
+        res.setHeader("Content-Type", "application/vnd.ms-excel");
+        res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.xls`);
+        res.write(`
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
@@ -515,40 +556,60 @@ const exportQuizReportExcel = async (req, res) => {
             </tr>
           </thead>
           <tbody>
-    `;
-        for (const att of quiz.attempts) {
-            const name = att.user.name || "N/A";
-            const email = att.user.email || "N/A";
-            const mobile = att.user.mobileNumber || "N/A";
-            const score = att.score;
-            const percentage = att.percentage.toFixed(2);
-            const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
-            const status = att.completed ? "Completed" : "Ongoing";
-            html += `
-        <tr>
-          <td>${name}</td>
-          <td>${email}</td>
-          <td>${mobile}</td>
-          <td>${score}</td>
-          <td>${percentage}</td>
-          <td>${date}</td>
-          <td>${status}</td>
-        </tr>
-      `;
+    `);
+        let hasMore = true;
+        let skip = 0;
+        const TAKE = 500;
+        while (hasMore) {
+            const attempts = await prisma_1.default.attempt.findMany({
+                where: { quizId },
+                include: { user: true },
+                orderBy: { submittedAt: "desc" },
+                skip,
+                take: TAKE,
+            });
+            if (attempts.length === 0) {
+                hasMore = false;
+                break;
+            }
+            for (const att of attempts) {
+                const name = att.user.name || "N/A";
+                const email = att.user.email || "N/A";
+                const mobile = att.user.mobileNumber || "N/A";
+                const score = att.score;
+                const percentage = att.percentage.toFixed(2);
+                const date = att.submittedAt ? new Date(att.submittedAt).toLocaleString() : "In Progress";
+                const status = att.completed ? "Completed" : "Ongoing";
+                res.write(`
+          <tr>
+            <td>${name}</td>
+            <td>${email}</td>
+            <td>${mobile}</td>
+            <td>${score}</td>
+            <td>${percentage}</td>
+            <td>${date}</td>
+            <td>${status}</td>
+          </tr>
+        `);
+            }
+            skip += TAKE;
         }
-        html += `
+        res.write(`
           </tbody>
         </table>
       </body>
       </html>
-    `;
+    `);
         await (0, auditLogger_1.logAuditAction)(req, "Test Report Exported (Excel)", quizId);
-        res.setHeader("Content-Type", "application/vnd.ms-excel");
-        res.setHeader("Content-Disposition", `attachment; filename=quiz_report_${quizId}_${Date.now()}.xls`);
-        res.send(html);
+        res.end();
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        if (!res.headersSent) {
+            res.status(500).json({ message: error.message });
+        }
+        else {
+            res.end();
+        }
     }
 };
 exports.exportQuizReportExcel = exportQuizReportExcel;
@@ -561,25 +622,9 @@ const bulkEditQuestions = async (req, res) => {
         if (!updates || typeof updates !== "object") {
             return res.status(400).json({ message: "updates object is required." });
         }
-        const { subject, chapter, topic, status } = updates;
-        const CHUNK_SIZE = 50;
-        for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
-            const chunkIds = questionIds.slice(i, i + CHUNK_SIZE);
-            const questionsToUpdate = await prisma_1.default.question.findMany({
-                where: { id: { in: chunkIds } }
-            });
-            await prisma_1.default.$transaction(questionsToUpdate.map((q) => {
-                return prisma_1.default.question.update({
-                    where: { id: q.id },
-                    data: {
-                        subject: subject !== undefined ? subject : q.subject,
-                        chapter: chapter !== undefined ? chapter : q.chapter,
-                        topic: topic !== undefined ? topic : q.topic,
-                        status: status !== undefined ? status : q.status,
-                    }
-                });
-            }));
-        }
+        // Delegate to service
+        const { bulkEditQuestionsService } = await Promise.resolve().then(() => __importStar(require("../services/quiz.service")));
+        await bulkEditQuestionsService(questionIds, updates);
         await (0, auditLogger_1.logAuditAction)(req, `Bulk edited ${questionIds.length} questions`);
         res.json({ message: "Questions bulk updated successfully." });
     }
@@ -608,38 +653,9 @@ const resolveDuplicateQuestions = async (req, res) => {
         if (!keptId || !Array.isArray(purgeIds) || purgeIds.length === 0) {
             return res.status(400).json({ message: "keptId and purgeIds array are required." });
         }
-        await prisma_1.default.$transaction(async (tx) => {
-            await tx.answer.updateMany({
-                where: { questionId: { in: purgeIds } },
-                data: { questionId: keptId },
-            });
-            await tx.reviewComment.updateMany({
-                where: { questionId: { in: purgeIds } },
-                data: { questionId: keptId },
-            });
-            await tx.questionRevision.updateMany({
-                where: { questionId: { in: purgeIds } },
-                data: { questionId: keptId },
-            });
-            const keptQuestion = await tx.question.findUnique({ where: { id: keptId } });
-            if (keptQuestion) {
-                for (const pId of purgeIds) {
-                    const purgedQuestion = await tx.question.findUnique({ where: { id: pId } });
-                    if (purgedQuestion && purgedQuestion.quizId && !keptQuestion.quizId) {
-                        await tx.question.update({
-                            where: { id: keptId },
-                            data: {
-                                quizId: purgedQuestion.quizId,
-                                sectionId: purgedQuestion.sectionId,
-                            },
-                        });
-                    }
-                }
-            }
-            await tx.question.deleteMany({
-                where: { id: { in: purgeIds } },
-            });
-        });
+        // Delegate to service
+        const { resolveDuplicateQuestionsService } = await Promise.resolve().then(() => __importStar(require("../services/quiz.service")));
+        await resolveDuplicateQuestionsService(keptId, purgeIds);
         await (0, auditLogger_1.logAuditAction)(req, `Resolved duplicates: kept ${keptId}, purged ${purgeIds.length} items`);
         res.json({ message: "Duplicates resolved successfully." });
     }

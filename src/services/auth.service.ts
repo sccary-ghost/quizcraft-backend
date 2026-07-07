@@ -132,3 +132,29 @@ export const loginUser = async (
     },
   };
 };
+
+export const changeMobile = async (userId: string, newMobileNumber: string) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { mobileNumber: newMobileNumber },
+    });
+
+    await tx.otpVerification.delete({
+      where: { mobileNumber: newMobileNumber },
+    });
+  });
+};
+
+export const changeEmail = async (userId: string, newEmail: string) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { email: newEmail },
+    });
+
+    await tx.emailOtpVerification.delete({
+      where: { email: newEmail },
+    });
+  });
+};

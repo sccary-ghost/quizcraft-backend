@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginUser = exports.registerUser = void 0;
+exports.changeEmail = exports.changeMobile = exports.loginUser = exports.registerUser = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const prisma_1 = __importDefault(require("../utils/prisma"));
@@ -111,3 +111,27 @@ const loginUser = async (email, password) => {
     };
 };
 exports.loginUser = loginUser;
+const changeMobile = async (userId, newMobileNumber) => {
+    await prisma_1.default.$transaction(async (tx) => {
+        await tx.user.update({
+            where: { id: userId },
+            data: { mobileNumber: newMobileNumber },
+        });
+        await tx.otpVerification.delete({
+            where: { mobileNumber: newMobileNumber },
+        });
+    });
+};
+exports.changeMobile = changeMobile;
+const changeEmail = async (userId, newEmail) => {
+    await prisma_1.default.$transaction(async (tx) => {
+        await tx.user.update({
+            where: { id: userId },
+            data: { email: newEmail },
+        });
+        await tx.emailOtpVerification.delete({
+            where: { email: newEmail },
+        });
+    });
+};
+exports.changeEmail = changeEmail;

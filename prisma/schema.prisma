@@ -8,29 +8,41 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  password     String
-  mobileNumber String?   @unique
-  isActive     Boolean   @default(true)
-  profilePhoto String?
-  role         Role      @default(CANDIDATE)
-  lastLogin    DateTime?
-  createdAt    DateTime  @default(now())
-  attempts     Attempt[]
-  sessions     Session[]
-  goal         UserGoal?
-  bookmarks    Bookmark[]
-  collections  BookmarkCollection[]
-  practiceLogs BookmarkPracticeLog[]
-  preferredLanguage Language @default(EN)
-  translations QuestionTranslation[] @relation("Translator")
-  reviews      QuestionTranslation[] @relation("Reviewer")
-  edits        TranslationRevision[]
-  practiceSessions PracticeSession[]
-  aiLogs       AIRequestLog[]
-  notifications Notification[]
+  id                String                @id @default(cuid())
+  name              String
+  email             String                @unique
+  password          String
+  mobileNumber      String?               @unique
+  isActive          Boolean               @default(true)
+  profilePhoto      String?
+  role              Role                  @default(CANDIDATE)
+  lastLogin         DateTime?
+  createdAt         DateTime              @default(now())
+  attempts          Attempt[]
+  sessions          Session[]
+  goal              UserGoal?
+  bookmarks         Bookmark[]
+  collections       BookmarkCollection[]
+  practiceLogs      BookmarkPracticeLog[]
+  preferredLanguage Language              @default(EN)
+  translations      QuestionTranslation[] @relation("Translator")
+  reviews           QuestionTranslation[] @relation("Reviewer")
+  edits             TranslationRevision[]
+  practiceSessions  PracticeSession[]
+  aiLogs            AIRequestLog[]
+  notifications     Notification[]
+
+  readingProgress    ReadingProgress[]
+  readingHistory     ReadingHistory[]
+  readingSessions    ReadingSession[]
+  studyBookmarks     StudyBookmark[]
+  studyHighlights    StudyHighlight[]
+  readingNotes       ReadingNote[]
+  vocabularyWords    VocabularyWord[]
+  flashcards         Flashcard[]
+  readingCollections ReadingCollection[]
+  studyChats         StudyChat[]
+  studyDrafts        AIGeneratedStudyDraft[]
 }
 
 model OtpVerification {
@@ -60,78 +72,78 @@ enum QuestionStatus {
 }
 
 model Quiz {
-  id               String     @id @default(cuid())
-  title            String
-  description      String?
-  duration         Int
-  startDate        DateTime?
-  endDate          DateTime?
-  timezone         String?     @default("Asia/Kolkata")
-  status           QuizStatus  @default(Draft)
-  resumeAllowed    Boolean     @default(true)
-  availabilityMode String      @default("IMMEDIATE")
-  hideUntilStart   Boolean     @default(false)
-  autoCloseAfterEnd Boolean    @default(false)
-  isDeleted        Boolean    @default(false)
-  deletedAt        DateTime?
-  updatedAt        DateTime?   @updatedAt
-  createdAt        DateTime   @default(now())
-  isPractice       Boolean    @default(false)
-  availableLanguages Language[] @default([EN])
-  attempts         Attempt[]
-  questions        Question[]
-  sections         Section[]
-  bookmarks        Bookmark[]
+  id                        String          @id @default(cuid())
+  title                     String
+  description               String?
+  duration                  Int
+  startDate                 DateTime?
+  endDate                   DateTime?
+  timezone                  String?         @default("Asia/Kolkata")
+  status                    QuizStatus      @default(Draft)
+  resumeAllowed             Boolean         @default(true)
+  availabilityMode          String          @default("IMMEDIATE")
+  hideUntilStart            Boolean         @default(false)
+  autoCloseAfterEnd         Boolean         @default(false)
+  isDeleted                 Boolean         @default(false)
+  deletedAt                 DateTime?
+  updatedAt                 DateTime?       @updatedAt
+  createdAt                 DateTime        @default(now())
+  isPractice                Boolean         @default(false)
+  availableLanguages        Language[]      @default([EN])
+  attempts                  Attempt[]
+  questions                 Question[]
+  sections                  Section[]
+  bookmarks                 Bookmark[]
   // Proctoring configuration (Phase 19)
-  proctorEnabled          Boolean        @default(false)
-  proctorWebcam           Boolean        @default(false)
-  proctorFace             Boolean        @default(false)
-  proctorCopy             Boolean        @default(false)
-  proctorPaste            Boolean        @default(false)
-  proctorDevTools         Boolean        @default(false)
-  proctorMicrophone       Boolean        @default(false)
-  proctorIdle             Boolean        @default(false)
-  proctorRightClick       Boolean        @default(false)
-  proctorMaxTabSwitches   Int            @default(3)
-  proctorMaxFsExits       Int            @default(3)
-  proctorMaxFaceMissingSecs Int          @default(30)
-  proctorWarningLimit     Int            @default(5)
-  proctorViolationAction  ViolationAction @default(WARN)
-  proctorAutoSubmit       Boolean        @default(false)
+  proctorEnabled            Boolean         @default(false)
+  proctorWebcam             Boolean         @default(false)
+  proctorFace               Boolean         @default(false)
+  proctorCopy               Boolean         @default(false)
+  proctorPaste              Boolean         @default(false)
+  proctorDevTools           Boolean         @default(false)
+  proctorMicrophone         Boolean         @default(false)
+  proctorIdle               Boolean         @default(false)
+  proctorRightClick         Boolean         @default(false)
+  proctorMaxTabSwitches     Int             @default(3)
+  proctorMaxFsExits         Int             @default(3)
+  proctorMaxFaceMissingSecs Int             @default(30)
+  proctorWarningLimit       Int             @default(5)
+  proctorViolationAction    ViolationAction @default(WARN)
+  proctorAutoSubmit         Boolean         @default(false)
 }
 
 model Question {
-  id            String   @id @default(cuid())
-  quizId        String?  // Optional banaya taaki question bina quiz ke bank mein reh sake
-  sectionId     String?  // Associated section
-  question      String
-  optionA       String
-  optionB       String
-  optionC       String
-  optionD       String
-  correctAnswer String
-  explanation   String?
-  subject       String?  // Naya: Filter ke liye
-  chapter       String?  // Naya: Filter ke liye
-  topic         String?  // Naya: Filter ke liye
-  isBank        Boolean  @default(false) // Naya: Master bank identify karne ke liye
-  version       Int      @default(1)
-  status        QuestionStatus @default(Draft)
-  tags          String[] @default([])
-  isDeleted     Boolean  @default(false)
-  deletedAt     DateTime?
-  createdAt     DateTime @default(now())
-  answers       Answer[]
-  revisions     QuestionRevision[]
-  comments      ReviewComment[]
-  quiz          Quiz?    @relation(fields: [quizId], references: [id])
-  section       Section? @relation(fields: [sectionId], references: [id])
-  folderId      String?
-  folder        Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  difficulty    Difficulty @default(MEDIUM)
-  bookmarks     Bookmark[]
+  id                String                    @id @default(cuid())
+  quizId            String? // Optional banaya taaki question bina quiz ke bank mein reh sake
+  sectionId         String? // Associated section
+  question          String
+  optionA           String
+  optionB           String
+  optionC           String
+  optionD           String
+  correctAnswer     String
+  explanation       String?
+  subject           String? // Naya: Filter ke liye
+  chapter           String? // Naya: Filter ke liye
+  topic             String? // Naya: Filter ke liye
+  isBank            Boolean                   @default(false) // Naya: Master bank identify karne ke liye
+  version           Int                       @default(1)
+  status            QuestionStatus            @default(Draft)
+  tags              String[]                  @default([])
+  isDeleted         Boolean                   @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  answers           Answer[]
+  revisions         QuestionRevision[]
+  comments          ReviewComment[]
+  quiz              Quiz?                     @relation(fields: [quizId], references: [id])
+  section           Section?                  @relation(fields: [sectionId], references: [id])
+  folderId          String?
+  folder            Folder?                   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  difficulty        Difficulty                @default(MEDIUM)
+  bookmarks         Bookmark[]
   practiceQuestions PracticeSessionQuestion[]
-  translations  QuestionTranslation[]
+  translations      QuestionTranslation[]
 
   @@index([quizId, isDeleted])
   @@index([isBank, isDeleted])
@@ -141,17 +153,17 @@ model Question {
 }
 
 model ReviewComment {
-  id          String   @id @default(cuid())
-  questionId  String
-  comment     String
-  authorName  String   @default("Reviewer")
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  questionId String
+  comment    String
+  authorName String   @default("Reviewer")
+  createdAt  DateTime @default(now())
 
   questionRelation Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model QuestionRevision {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   questionId    String
   version       Int
   question      String
@@ -165,43 +177,43 @@ model QuestionRevision {
   chapter       String?
   topic         String?
   status        QuestionStatus @default(Draft)
-  tags          String[] @default([])
-  createdAt     DateTime @default(now())
-  difficulty    Difficulty @default(MEDIUM)
+  tags          String[]       @default([])
+  createdAt     DateTime       @default(now())
+  difficulty    Difficulty     @default(MEDIUM)
 
   questionRelation Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model Section {
-  id            String     @id @default(cuid())
-  quizId        String
-  name          String
-  description   String?
-  instructions  String?
-  order         Int        @default(0)
-  marks         Float      @default(4.0)
-  negativeMarks Float      @default(1.0)
-  shuffleQuestions Boolean @default(false)
-  shuffleOptions   Boolean @default(false)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id               String   @id @default(cuid())
+  quizId           String
+  name             String
+  description      String?
+  instructions     String?
+  order            Int      @default(0)
+  marks            Float    @default(4.0)
+  negativeMarks    Float    @default(1.0)
+  shuffleQuestions Boolean  @default(false)
+  shuffleOptions   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   quiz      Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
   questions Question[]
 }
 
 model Attempt {
-  id          String   @id @default(cuid())
+  id          String                @id @default(cuid())
   userId      String
   quizId      String
   score       Float
   percentage  Float
-  submittedAt DateTime @default(now())
-  completed   Boolean  @default(true)
-  state       SessionState @default(STARTED)
+  submittedAt DateTime              @default(now())
+  completed   Boolean               @default(true)
+  state       SessionState          @default(STARTED)
   answers     Answer[]
-  quiz        Quiz     @relation(fields: [quizId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  quiz        Quiz                  @relation(fields: [quizId], references: [id])
+  user        User                  @relation(fields: [userId], references: [id])
   session     AttemptSession?
   historyLogs SessionHistoryLog[]
   violations  ProctoringViolation[]
@@ -230,25 +242,25 @@ model playing_with_neon {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  timestamp  DateTime @default(now())
-  userId     String?
-  userName   String   @default("System")
-  ipAddress  String?
-  userAgent  String?
-  action     String
-  target     String?
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  userId    String?
+  userName  String   @default("System")
+  ipAddress String?
+  userAgent String?
+  action    String
+  target    String?
 
   @@index([timestamp])
   @@index([userId])
 }
 
 model Folder {
-  id        String     @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
   parentId  String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parent    Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children  Folder[]   @relation("FolderHierarchy")
@@ -282,20 +294,20 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
 model EmailOtpVerification {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  otpHash    String
-  expiresAt  DateTime
-  attempts   Int      @default(0)
-  resendCount Int     @default(1)
+  id              String   @id @default(cuid())
+  email           String   @unique
+  otpHash         String
+  expiresAt       DateTime
+  attempts        Int      @default(0)
+  resendCount     Int      @default(1)
   lastRequestedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
 }
 
 enum Difficulty {
@@ -305,15 +317,24 @@ enum Difficulty {
 }
 
 model UserGoal {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  targetAccuracy       Float    @default(75.0)
-  weeklyPracticeGoal   Int      @default(5)
-  monthlyTestGoal      Int      @default(15)
-  questionsPerWeekGoal Int      @default(100)
-  isEnabled            Boolean  @default(true)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  targetAccuracy       Float   @default(75.0)
+  weeklyPracticeGoal   Int     @default(5)
+  monthlyTestGoal      Int     @default(15)
+  questionsPerWeekGoal Int     @default(100)
+  isEnabled            Boolean @default(true)
+
+  dailyReadingMinutes   Int @default(30)
+  weeklyReadingMinutes  Int @default(210)
+  monthlyReadingMinutes Int @default(900)
+  pagesGoal             Int @default(10)
+  wordsGoal             Int @default(2500)
+  vocabularyGoal        Int @default(5)
+  booksGoal             Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -339,36 +360,37 @@ model BookmarkCollection {
   updatedAt   DateTime   @updatedAt
   bookmarks   Bookmark[]
 
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, name])
 }
 
 model Bookmark {
-  id                   String               @id @default(cuid())
-  userId               String
-  questionId           String
-  quizId               String?              // Originating Test ID
-  timesPracticed       Int                  @default(0)
-  lastPracticed        DateTime?
-  correctCount         Int                  @default(0)
-  incorrectCount       Int                  @default(0)
-  
+  id             String    @id @default(cuid())
+  userId         String
+  questionId     String
+  quizId         String? // Originating Test ID
+  timesPracticed Int       @default(0)
+  lastPracticed  DateTime?
+  correctCount   Int       @default(0)
+  incorrectCount Int       @default(0)
+
   // Spaced Repetition / Revision Scheduling
-  nextRevisionDate     DateTime?
-  revisionCount        Int                  @default(0)
-  lastRevisionResult   Boolean?
-  lastRevisionAt       DateTime?
-  
-  status               BookmarkStatus       @default(NEW)
+  nextRevisionDate   DateTime?
+  revisionCount      Int       @default(0)
+  lastRevisionResult Boolean?
+  lastRevisionAt     DateTime?
 
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  status BookmarkStatus @default(NEW)
 
-  collections          BookmarkCollection[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question             Question             @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  quiz                 Quiz?                @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  collections BookmarkCollection[]
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  quiz     Quiz?    @relation(fields: [quizId], references: [id], onDelete: SetNull)
 
   @@unique([userId, questionId])
   @@index([userId, status])
@@ -383,8 +405,8 @@ model BookmarkPracticeLog {
   timeSpent      Int
   createdAt      DateTime @default(now())
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -400,42 +422,42 @@ enum PracticeSource {
 }
 
 model PracticeSession {
-  id             String                    @id @default(cuid())
+  id             String         @id @default(cuid())
   userId         String
   source         PracticeSource
   filters        Json?
   adaptive       Json?
-  options        Json?                     // For shuffle, timer, instant feedback, explanation, negative marking, etc.
-  createdAt      DateTime                  @default(now())
+  options        Json? // For shuffle, timer, instant feedback, explanation, negative marking, etc.
+  createdAt      DateTime       @default(now())
   startedAt      DateTime?
   completedAt    DateTime?
-  currentIndex   Int                       @default(0)
+  currentIndex   Int            @default(0)
   totalQuestions Int
   score          Float?
   accuracy       Float?
-  timeSpent      Int                       @default(0)
-  state          SessionState              @default(STARTED)
+  timeSpent      Int            @default(0)
+  state          SessionState   @default(STARTED)
 
-  questions      PracticeSessionQuestion[]
-  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  snapshot       PracticeSessionSnapshot?
-  historyLogs    SessionHistoryLog[]
+  questions   PracticeSessionQuestion[]
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshot    PracticeSessionSnapshot?
+  historyLogs SessionHistoryLog[]
 
   @@index([userId])
   @@index([state])
 }
 
 model PracticeSessionQuestion {
-  id                String          @id @default(cuid())
+  id                String   @id @default(cuid())
   practiceSessionId String
   questionId        String
-  selectedAnswer    String?         // Track response selection
+  selectedAnswer    String? // Track response selection
   isCorrect         Boolean?
-  timeSpent         Int             @default(0)
-  order             Int             @default(0)
+  timeSpent         Int      @default(0)
+  order             Int      @default(0)
 
-  practiceSession   PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
-  question          Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  practiceSession PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
+  question        Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([practiceSessionId, questionId])
 }
@@ -468,52 +490,52 @@ enum SessionEvent {
 }
 
 model AttemptSession {
-  id               String       @id @default(cuid())
-  attemptId        String       @unique
-  currentIndex     Int          @default(0)
+  id               String  @id @default(cuid())
+  attemptId        String  @unique
+  currentIndex     Int     @default(0)
   currentSectionId String?
-  questionOrder    Json         // Shuffled array of question IDs
-  optionOrder      Json         // Shuffled options map per question
-  markedForReview  Json         // Array of marked question IDs
-  visitedQuestions Json         // Array of visited question IDs
-  warningCount     Int          @default(0)
-  version          Int          @default(0)
-  
-  lastHeartbeatAt  DateTime?
-  clientId         String?      // Client active tab token
-  updatedAt        DateTime     @updatedAt
+  questionOrder    Json // Shuffled array of question IDs
+  optionOrder      Json // Shuffled options map per question
+  markedForReview  Json // Array of marked question IDs
+  visitedQuestions Json // Array of visited question IDs
+  warningCount     Int     @default(0)
+  version          Int     @default(0)
 
-  attempt          Attempt      @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  lastHeartbeatAt DateTime?
+  clientId        String? // Client active tab token
+  updatedAt       DateTime  @updatedAt
+
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
 }
 
 model PracticeSessionSnapshot {
-  id               String          @id @default(cuid())
-  practiceId       String          @unique
-  currentIndex     Int             @default(0)
+  id               String    @id @default(cuid())
+  practiceId       String    @unique
+  currentIndex     Int       @default(0)
   currentSectionId String?
   questionOrder    Json
   optionOrder      Json
   markedForReview  Json
   visitedQuestions Json
-  warningCount     Int             @default(0)
-  version          Int             @default(0)
+  warningCount     Int       @default(0)
+  version          Int       @default(0)
   clientId         String?
   lastHeartbeatAt  DateTime?
-  updatedAt        DateTime        @updatedAt
+  updatedAt        DateTime  @updatedAt
 
-  practice         PracticeSession @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  practice PracticeSession @relation(fields: [practiceId], references: [id], onDelete: Cascade)
 }
 
 model SessionHistoryLog {
-  id         String           @id @default(cuid())
+  id         String       @id @default(cuid())
   attemptId  String?
   practiceId String?
   event      SessionEvent
   payload    Json?
-  createdAt  DateTime         @default(now())
+  createdAt  DateTime     @default(now())
 
-  attempt    Attempt?         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  practice   PracticeSession? @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  attempt  Attempt?         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  practice PracticeSession? @relation(fields: [practiceId], references: [id], onDelete: Cascade)
 
   @@index([attemptId])
 }
@@ -531,49 +553,49 @@ enum TranslationStatus {
 }
 
 model QuestionTranslation {
-  id             String                       @id @default(cuid())
+  id             String            @id @default(cuid())
   questionId     String
   language       Language
   questionText   String
   explanation    String?
-  status         TranslationStatus            @default(DRAFT)
+  status         TranslationStatus @default(DRAFT)
   translatedById String?
   reviewedById   String?
-  createdAt      DateTime                     @default(now())
-  updatedAt      DateTime                     @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  question       Question                     @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  translatedBy   User?                        @relation("Translator", fields: [translatedById], references: [id])
-  reviewedBy     User?                        @relation("Reviewer", fields: [reviewedById], references: [id])
-  options        QuestionOptionTranslation[]
-  revisions      TranslationRevision[]
+  question     Question                    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  translatedBy User?                       @relation("Translator", fields: [translatedById], references: [id])
+  reviewedBy   User?                       @relation("Reviewer", fields: [reviewedById], references: [id])
+  options      QuestionOptionTranslation[]
+  revisions    TranslationRevision[]
 
   @@unique([questionId, language])
 }
 
 model QuestionOptionTranslation {
-  id            String              @id @default(cuid())
+  id            String @id @default(cuid())
   translationId String
   optionIndex   Int
   text          String
 
-  translation   QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
-  
+  translation QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
   @@unique([translationId, optionIndex])
 }
 
 model TranslationRevision {
-  id            String              @id @default(cuid())
+  id            String   @id @default(cuid())
   translationId String
   version       Int
   questionText  String
   explanation   String?
-  optionsJson   Json                // Stores snapshot of options
+  optionsJson   Json // Stores snapshot of options
   editedById    String?
-  createdAt     DateTime            @default(now())
+  createdAt     DateTime @default(now())
 
-  translation   QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
-  editedBy      User?               @relation(fields: [editedById], references: [id])
+  translation QuestionTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  editedBy    User?               @relation(fields: [editedById], references: [id])
 }
 
 // ─── Phase 19: AI Enums ───────────────────────────────────────────────────────
@@ -592,6 +614,16 @@ enum AIRequestStatus {
 }
 
 enum AIPromptPurpose {
+  STUDY_MATERIAL_GENERATION
+  STUDY_SUMMARY
+  SIMPLIFY_TEXT
+  CONTEXTUAL_EXPLANATION
+  VOCABULARY_EXTRACTION
+  FLASHCARD_GENERATION
+  NOTES_GENERATION
+  QUIZ_GENERATION
+  MEMORY_TRICK
+  EXAM_IMPORTANCE
   QUESTION_GENERATION
   EXPLANATION
   TRANSLATION
@@ -681,18 +713,18 @@ model AIPromptTemplate {
 }
 
 model AIRequestLog {
-  id                String              @id @default(cuid())
-  userId            String
-  provider          AIProvider
-  purpose           AIPromptPurpose
-  prompt            String
-  response          String
-  tokenUsage        Int                 @default(0)
-  executionTime     Int                 @default(0)
-  status            AIRequestStatus
-  createdAt         DateTime            @default(now())
+  id            String          @id @default(cuid())
+  userId        String
+  provider      AIProvider
+  purpose       AIPromptPurpose
+  prompt        String
+  response      String
+  tokenUsage    Int             @default(0)
+  executionTime Int             @default(0)
+  status        AIRequestStatus
+  createdAt     DateTime        @default(now())
 
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   generatedQuestion AIGeneratedQuestion?
 
   @@index([userId])
@@ -716,21 +748,21 @@ model AIGeneratedQuestion {
   imported    Boolean    @default(false)
   createdAt   DateTime   @default(now())
 
-  request     AIRequestLog @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request AIRequestLog @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
 
 // ─── Phase 19: Proctoring Models ──────────────────────────────────────────────
 
 model ProctoringViolation {
-  id        String            @id @default(cuid())
-  attemptId String
-  type      ProctoringType
+  id         String            @id @default(cuid())
+  attemptId  String
+  type       ProctoringType
   screenshot String?
-  severity  ViolationSeverity @default(MEDIUM)
-  details   String?
-  timestamp DateTime          @default(now())
+  severity   ViolationSeverity @default(MEDIUM)
+  details    String?
+  timestamp  DateTime          @default(now())
 
-  attempt   Attempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
 
   @@index([attemptId])
 }
@@ -752,7 +784,7 @@ model Notification {
   expiresAt   DateTime?
   createdAt   DateTime             @default(now())
 
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
   @@index([userId, isSent])
@@ -761,16 +793,16 @@ model Notification {
 // ─── Phase 19: Organization Settings ─────────────────────────────────────────
 
 model SystemSettings {
-  id                   String   @id @default("default")
-  orgName              String   @default("QuizCraft")
+  id                   String  @id @default("default")
+  orgName              String  @default("QuizCraft")
   logo                 String?
   favicon              String?
-  primaryColor         String   @default("#2563eb")
-  secondaryColor       String   @default("#1e293b")
-  timezone             String   @default("Asia/Kolkata")
-  defaultLanguage      String   @default("EN")
-  defaultTheme         String   @default("dark")
-  maintenanceMode      Boolean  @default(false)
+  primaryColor         String  @default("#2563eb")
+  secondaryColor       String  @default("#1e293b")
+  timezone             String  @default("Asia/Kolkata")
+  defaultLanguage      String  @default("EN")
+  defaultTheme         String  @default("dark")
+  maintenanceMode      Boolean @default(false)
   maintenanceBanner    String?
   footerText           String?
   supportEmail         String?
@@ -787,8 +819,315 @@ model SystemSettings {
   registrationSettings Json?
   smtpConfig           Json?
   smsProviderConfig    Json?
-  storageProvider      String   @default("local")
+  storageProvider      String  @default("local")
   storageConfig        Json?
   backupSchedule       String?
-  sessionTimeout       Int      @default(3600)
+  sessionTimeout       Int     @default(3600)
+}
+
+// ─── Phase 21: Study Workspace Enums ──────────────────────────────────────────
+
+enum StudyMaterialType {
+  BOOK
+  EDITORIAL
+  CURRENT_AFFAIRS
+  ARTICLE
+  NOTES
+  CUSTOM
+  IMPORTED
+  AI_GENERATED
+}
+
+enum StudyMaterialStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum VocabularyStatus {
+  NEW
+  LEARNING
+  REVIEW
+  MASTERED
+}
+
+enum HighlightColor {
+  YELLOW
+  GREEN
+  BLUE
+  RED
+  PURPLE
+}
+
+// ─── Phase 21: Study Workspace Models ─────────────────────────────────────────
+
+model StudyMaterial {
+  id                   String              @id @default(cuid())
+  title                String
+  description          String?
+  author               String?
+  source               String?
+  sourceType           StudyMaterialType   @default(CUSTOM)
+  coverImage           String?
+  language             Language            @default(EN)
+  difficulty           Difficulty          @default(MEDIUM)
+  estimatedReadingTime Int                 @default(0)
+  tags                 String[]            @default([])
+  status               StudyMaterialStatus @default(DRAFT)
+  originalFileMetadata Json?
+  version              Int                 @default(1)
+  parentVersionId      String?
+  isPublic             Boolean             @default(false)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  chapters    StudyChapter[]
+  collections ReadingCollection[]
+}
+
+model StudyChapter {
+  id           String   @id @default(cuid())
+  materialId   String
+  title        String
+  chapterOrder Int
+  htmlContent  String?  @db.Text
+  plainText    String?  @db.Text
+  wordCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  material   StudyMaterial     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  paragraphs StudyParagraph[]
+  progress   ReadingProgress[]
+
+  @@index([materialId])
+}
+
+model StudyParagraph {
+  id             String  @id @default(cuid())
+  chapterId      String
+  paragraphOrder Int
+  pageNumber     Int?
+  htmlContent    String? @db.Text
+  plainText      String? @db.Text
+  startOffset    Int     @default(0)
+  endOffset      Int     @default(0)
+  wordCount      Int     @default(0)
+
+  chapter    StudyChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  highlights StudyHighlight[]
+  history    ReadingHistory[]
+  progress   ReadingProgress[]
+
+  @@index([chapterId])
+}
+
+model ReadingProgress {
+  id                    String   @id @default(cuid())
+  userId                String
+  chapterId             String
+  paragraphId           String?
+  currentScrollPosition Int      @default(0)
+  completionPercentage  Float    @default(0)
+  lastOpenedAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter   StudyChapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  paragraph StudyParagraph? @relation(fields: [paragraphId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, chapterId])
+  @@index([userId])
+}
+
+model ReadingHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  paragraphId String
+  openedAt    DateTime @default(now())
+  timeSpentMs Int      @default(0)
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paragraph StudyParagraph @relation(fields: [paragraphId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([paragraphId])
+}
+
+model ReadingSession {
+  id         String    @id @default(cuid())
+  userId     String
+  durationMs Int       @default(0)
+  pagesRead  Int       @default(0)
+  wordsRead  Int       @default(0)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StudyBookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  chapterId   String
+  paragraphId String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([chapterId])
+}
+
+model StudyHighlight {
+  id            String         @id @default(cuid())
+  userId        String
+  paragraphId   String
+  selectedText  String         @db.Text
+  startOffset   Int
+  endOffset     Int
+  color         HighlightColor @default(YELLOW)
+  aiExplanation String?        @db.Text
+  aiSummary     String?        @db.Text
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paragraph StudyParagraph @relation(fields: [paragraphId], references: [id], onDelete: Cascade)
+  notes     ReadingNote[]
+
+  @@index([userId])
+  @@index([paragraphId])
+}
+
+model ReadingNote {
+  id          String   @id @default(cuid())
+  userId      String
+  highlightId String?
+  content     String   @db.Text
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  highlight StudyHighlight? @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VocabularyWord {
+  id            String           @id @default(cuid())
+  userId        String
+  word          String
+  pronunciation String?
+  ipa           String?
+  partOfSpeech  String?
+  meaning       String           @db.Text
+  hindiMeaning  String?          @db.Text
+  synonyms      String[]         @default([])
+  antonyms      String[]         @default([])
+  examples      String[]         @default([])
+  difficulty    Difficulty       @default(MEDIUM)
+  status        VocabularyStatus @default(NEW)
+
+  nextRevisionDate   DateTime?
+  revisionCount      Int       @default(0)
+  lastRevisionResult Boolean?
+  lastRevisionAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, word])
+  @@index([userId, status])
+}
+
+model Flashcard {
+  id         String  @id @default(cuid())
+  userId     String
+  front      String  @db.Text
+  back       String  @db.Text
+  materialId String?
+
+  nextRevisionDate   DateTime?
+  revisionCount      Int       @default(0)
+  lastRevisionResult Boolean?
+  lastRevisionAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ReadingCollection {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materials StudyMaterial[]
+
+  @@unique([userId, name])
+}
+
+model StudyChat {
+  id         String   @id @default(cuid())
+  userId     String
+  materialId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages StudyChatMessage[]
+
+  @@index([userId, materialId])
+}
+
+model StudyChatMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  role      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  chat StudyChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+}
+
+model AICache {
+  id          String    @id @default(cuid())
+  requestHash String    @unique
+  prompt      String    @db.Text
+  response    String    @db.Text
+  provider    String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+}
+
+model AIGeneratedStudyDraft {
+  id            String   @id @default(cuid())
+  userId        String
+  materialId    String?
+  sourceText    String?  @db.Text
+  generatedData Json
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

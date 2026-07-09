@@ -82,7 +82,7 @@ async function callWithProvider(
   return { response, tokenUsage };
 }
 
-async function callLLM(
+export async function callLLM(
   purpose: AIPromptPurpose,
   userContent: string,
   userId: string,
@@ -134,8 +134,8 @@ async function callLLM(
 
 // ─── Default system prompts (fallback if no template saved) ──────────────────
 
-function getDefaultPrompt(purpose: AIPromptPurpose): string {
-  const prompts: Record<AIPromptPurpose, string> = {
+export function getDefaultPrompt(purpose: AIPromptPurpose): string {
+  const prompts: Partial<Record<AIPromptPurpose, string>> = {
     QUESTION_GENERATION: `You are an expert exam question writer for government competitive exams (SSC, UPSC, Railway).
 Generate a multiple-choice question with exactly 4 options (A, B, C, D), one correct answer, and a short explanation.
 Respond in strict JSON format:
@@ -159,12 +159,12 @@ Respond in strict JSON format:
     SIMILAR_QUESTION: `You are an expert exam question writer. Given an existing question, generate a similar but distinct question on the same topic. Return in strict JSON format matching the original structure with keys: question, optionA, optionB, optionC, optionD, answer, explanation.`,
     QUESTION_IMPROVEMENT: `You are an expert exam content editor. Review this question and suggest specific improvements for clarity, accuracy, and appropriateness for competitive exams. Return JSON: { "suggestions": ["...", "..."], "improvedQuestion": "..." }`,
   };
-  return prompts[purpose];
+  return prompts[purpose] ?? "You are a helpful AI assistant.";
 }
 
 // ─── Log to database ─────────────────────────────────────────────────────────
 
-async function logRequest(
+export async function logRequest(
   userId: string,
   purpose: AIPromptPurpose,
   prompt: string,

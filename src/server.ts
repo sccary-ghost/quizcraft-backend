@@ -29,6 +29,10 @@ import aiRoutes from "./routes/ai.routes";
 import proctoringRoutes from "./routes/proctoring.routes";
 import notificationRoutes from "./routes/notification.routes";
 import settingsRoutes from "./routes/settings.routes";
+import studyRoutes from "./routes/study.routes";
+import aiReadingRoutes from "./routes/aiReading.routes";
+import readingRoutes from "./routes/reading.routes";
+import vocabularyRoutes from "./routes/vocabulary.routes";
 import prisma from "./utils/prisma";
 
 dotenv.config();
@@ -108,6 +112,10 @@ app.use("/ai", aiRoutes);
 app.use("/proctoring", proctoringRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/settings", settingsRoutes);
+app.use("/study", studyRoutes);
+app.use("/ai-reading", aiReadingRoutes);
+app.use("/reading", readingRoutes);
+app.use("/vocabulary", vocabularyRoutes);
 
 app.get("/", (req, res) => {
   res.send("QuizCraft Backend Running 🚀");

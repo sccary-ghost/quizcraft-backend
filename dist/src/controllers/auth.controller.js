@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revokeSession = exports.getActiveSessions = exports.verifyEmailChange = exports.requestEmailChange = exports.verifyMobileChange = exports.requestMobileChange = exports.uploadProfilePhoto = exports.changePassword = exports.updateProfile = exports.getMe = exports.logout = exports.login = exports.register = exports.sendOtp = void 0;
+exports.revokeSession = exports.getActiveSessions = exports.verifyEmailChange = exports.requestEmailChange = exports.verifyMobileChange = exports.requestMobileChange = exports.uploadProfilePhoto = exports.changePassword = exports.updateProfile = exports.getMe = exports.logout = exports.adminLogin = exports.login = exports.register = exports.sendOtp = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const fs_1 = __importDefault(require("fs"));
@@ -68,6 +68,9 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         const result = await (0, auth_service_1.loginUser)(email, password);
+        if (result.user.role === "ADMIN") {
+            return res.status(403).json({ message: "Admin users must login through the admin portal" });
+        }
         await (0, auditLogger_1.logAuditAction)(req, "Login", result.user.id, {
             userId: result.user.id,
             userName: result.user.email,
@@ -84,6 +87,30 @@ const login = async (req, res) => {
     }
 };
 exports.login = login;
+// Admin Login controller
+const adminLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const result = await (0, auth_service_1.loginUser)(email, password);
+        if (result.user.role !== "ADMIN") {
+            return res.status(403).json({ message: "Access denied. Admins only." });
+        }
+        await (0, auditLogger_1.logAuditAction)(req, "Admin Login", result.user.id, {
+            userId: result.user.id,
+            userName: result.user.email,
+        });
+        const ipAddress = req.ip || req.socket.remoteAddress;
+        const userAgent = req.headers["user-agent"];
+        await prisma_1.default.session.create({
+            data: { userId: result.user.id, token: result.token, ipAddress, userAgent },
+        });
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.adminLogin = adminLogin;
 const logout = async (req, res) => {
     try {
         const authHeader = req.headers.authorization;

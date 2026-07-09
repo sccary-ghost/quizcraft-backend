@@ -91,7 +91,38 @@ export const login = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const result = await loginUser(email, password);
 
+    if (result.user.role === "ADMIN") {
+      return res.status(403).json({ message: "Admin users must login through the admin portal" });
+    }
+
     await logAuditAction(req, "Login", result.user.id, {
+      userId: result.user.id,
+      userName: result.user.email,
+    });
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+    await prisma.session.create({
+      data: { userId: result.user.id, token: result.token, ipAddress, userAgent },
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Admin Login controller
+export const adminLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    const result = await loginUser(email, password);
+
+    if (result.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    await logAuditAction(req, "Admin Login", result.user.id, {
       userId: result.user.id,
       userName: result.user.email,
     });

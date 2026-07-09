@@ -15,6 +15,7 @@ import {
   verifyEmailChange,
   getActiveSessions,
   revokeSession,
+  adminLogin,
 } from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validate.middleware";
@@ -35,6 +36,7 @@ const router = Router();
 
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
+router.post("/admin-login", validate(loginSchema), adminLogin);
 router.post("/logout", logout);
 router.post("/otp/send", otpLimiter, validate(sendOtpSchema), sendOtp);
 router.get("/me", authenticate, getMe);

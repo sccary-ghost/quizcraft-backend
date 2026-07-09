@@ -10,6 +10,7 @@ const auth_validation_1 = require("../validations/auth.validation");
 const router = (0, express_1.Router)();
 router.post("/register", (0, validate_middleware_1.validate)(auth_validation_1.registerSchema), auth_controller_1.register);
 router.post("/login", (0, validate_middleware_1.validate)(auth_validation_1.loginSchema), auth_controller_1.login);
+router.post("/admin-login", (0, validate_middleware_1.validate)(auth_validation_1.loginSchema), auth_controller_1.adminLogin);
 router.post("/logout", auth_controller_1.logout);
 router.post("/otp/send", rateLimit_middleware_1.otpLimiter, (0, validate_middleware_1.validate)(auth_validation_1.sendOtpSchema), auth_controller_1.sendOtp);
 router.get("/me", auth_middleware_1.authenticate, auth_controller_1.getMe);

@@ -4,6 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rejectQuestion = exports.importQuestion = exports.approveQuestion = exports.getHistory = exports.suggestImprovements = exports.generateSimilarQuestion = exports.classifyBloom = exports.estimateDifficulty = exports.fixGrammar = exports.cleanOCR = exports.checkDuplicate = exports.generateDistractors = exports.translateToHindi = exports.generateExplanation = exports.generateQuestion = void 0;
+exports.callLLM = callLLM;
+exports.getDefaultPrompt = getDefaultPrompt;
+exports.logRequest = logRequest;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const client_1 = require("@prisma/client");
 const p_limit_1 = __importDefault(require("p-limit"));
@@ -146,7 +149,7 @@ Respond in strict JSON format:
         SIMILAR_QUESTION: `You are an expert exam question writer. Given an existing question, generate a similar but distinct question on the same topic. Return in strict JSON format matching the original structure with keys: question, optionA, optionB, optionC, optionD, answer, explanation.`,
         QUESTION_IMPROVEMENT: `You are an expert exam content editor. Review this question and suggest specific improvements for clarity, accuracy, and appropriateness for competitive exams. Return JSON: { "suggestions": ["...", "..."], "improvedQuestion": "..." }`,
     };
-    return prompts[purpose];
+    return prompts[purpose] ?? "You are a helpful AI assistant.";
 }
 // ─── Log to database ─────────────────────────────────────────────────────────
 async function logRequest(userId, purpose, prompt, result, status) {

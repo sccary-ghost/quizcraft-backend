@@ -43,6 +43,11 @@ model User {
   readingCollections ReadingCollection[]
   studyChats         StudyChat[]
   studyDrafts        AIGeneratedStudyDraft[]
+  questionCollections QuestionCollection[]
+  questionFavorites   QuestionFavorite[]
+  questionRecents     QuestionRecent[]
+  questionActivityLogs QuestionActivityLog[]
+  questionViews       QuestionView[]
 }
 
 model OtpVerification {
@@ -144,6 +149,14 @@ model Question {
   bookmarks         Bookmark[]
   practiceQuestions PracticeSessionQuestion[]
   translations      QuestionTranslation[]
+
+  properties        QuestionPropertyValue[]
+  sourceRelations   QuestionRelation[] @relation("SourceQuestion")
+  targetRelations   QuestionRelation[] @relation("TargetQuestion")
+  collectionItems   QuestionCollectionItem[]
+  favorites         QuestionFavorite[]
+  recentViews       QuestionRecent[]
+  activityLogs      QuestionActivityLog[]
 
   @@index([quizId, isDeleted])
   @@index([isBank, isDeleted])
@@ -1130,4 +1143,229 @@ model AIGeneratedStudyDraft {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─── Phase 22: QuestionOS Models ──────────────────────────────────────────────
+
+enum PropertyType {
+  TEXT
+  LONG_TEXT
+  RICH_TEXT
+  NUMBER
+  DATE
+  CHECKBOX
+  SINGLE_SELECT
+  MULTI_SELECT
+  RATING
+  URL
+  JSON
+  AI_FIELD
+}
+
+model QuestionProperty {
+  id           String      @id @default(cuid())
+  organizationId String?
+  name         String
+  slug         String      @unique
+  type         PropertyType
+  icon         String?
+  color        String?
+  required     Boolean     @default(false)
+  defaultValue Json?
+  validation   Json?
+  displayOrder Int         @default(0)
+  isCore       Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  values       QuestionPropertyValue[]
+}
+
+model QuestionPropertyValue {
+  id           String      @id @default(cuid())
+  questionId   String
+  propertyId   String
+  
+  textValue    String?     @db.Text
+  numberValue  Float?
+  booleanValue Boolean?
+  dateValue    DateTime?
+  jsonValue    Json?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  question     Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  property     QuestionProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, propertyId])
+  @@index([propertyId])
+  @@index([questionId])
+}
+
+model QuestionRelation {
+  id               String   @id @default(cuid())
+  sourceQuestionId String
+  targetQuestionId String
+  relationType     String   // e.g. "DUPLICATE", "PREREQUISITE", "FOLLOW_UP", "SIMILAR"
+  createdAt        DateTime @default(now())
+
+  sourceQuestion Question @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  targetQuestion Question @relation("TargetQuestion", fields: [targetQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceQuestionId, targetQuestionId, relationType])
+  @@index([sourceQuestionId])
+  @@index([targetQuestionId])
+}
+
+model QuestionCollection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  isPublic    Boolean  @default(false)
+  ownerId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       QuestionCollectionItem[]
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+}
+
+model QuestionCollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  questionId   String
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  collection   QuestionCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  question     Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, questionId])
+  @@index([collectionId])
+  @@index([questionId])
+}
+
+model QuestionFavorite {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId])
+}
+
+model QuestionRecent {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  openedAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId])
+}
+
+model QuestionActivityLog {
+  id         String   @id @default(cuid())
+  questionId String
+  userId     String?
+  action     String   // e.g. "CREATED", "EDITED", "PROPERTY_UPDATED", "STATUS_CHANGED"
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([questionId])
+  @@index([userId])
+}
+
+model QuestionView {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  isShared       Boolean   @default(false)
+  createdBy      String
+  isDefault      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  filters        QuestionViewFilter[]
+  sorts          QuestionViewSort[]
+  groups         QuestionViewGroup[]
+  layout         QuestionViewLayout?
+}
+
+model QuestionViewFilter {
+  id        String   @id @default(cuid())
+  viewId    String
+  logic     String   // "AND", "OR"
+  field     String?  // Core field or property slug
+  operator  String?  // "EQUALS", "CONTAINS", "GREATER_THAN", etc.
+  value     Json?    // Serialized value
+  parentId  String?  // For nested groups
+  order     Int      @default(0)
+
+  view      QuestionView         @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  parent    QuestionViewFilter?  @relation("NestedFilters", fields: [parentId], references: [id], onDelete: Cascade)
+  children  QuestionViewFilter[] @relation("NestedFilters")
+
+  @@index([viewId])
+  @@index([parentId])
+}
+
+model QuestionViewSort {
+  id        String   @id @default(cuid())
+  viewId    String
+  field     String   // Core field or property slug
+  direction String   // "ASC", "DESC"
+  order     Int      @default(0)
+
+  view      QuestionView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@index([viewId])
+}
+
+model QuestionViewGroup {
+  id        String   @id @default(cuid())
+  viewId    String
+  field     String   // Core field or property slug
+  order     Int      @default(0)
+
+  view      QuestionView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@index([viewId])
+}
+
+model QuestionViewLayout {
+  id             String   @id @default(cuid())
+  viewId         String   @unique
+  hiddenColumns  Json     @default("[]") // Array of slugs
+  pinnedColumns  Json     @default("[]") // Array of slugs
+  columnOrder    Json     @default("[]") // Array of slugs
+  columnWidths   Json     @default("{}") // Object mapping slug -> width px
+  rowHeight      String   @default("SHORT")
+  density        String   @default("COMFORTABLE")
+
+  view           QuestionView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+}
+
+model QuestionPresetFilter {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  filterJson  Json     // Structured JSON for the filter engine
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

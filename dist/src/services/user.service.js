@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateCandidateDetails = exports.getCandidateAttemptsHistory = exports.getCandidateProfileDetails = exports.getCandidatesList = void 0;
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const prisma_1 = __importDefault(require("../utils/prisma"));
 /**
  * Get all candidates with optional search, active/inactive filtering, and sorting options.
@@ -174,6 +175,9 @@ const updateCandidateDetails = async (userId, data) => {
         if (existingMobile) {
             throw new Error("Mobile number already registered by another candidate");
         }
+    }
+    if (data.password) {
+        data.password = await bcrypt_1.default.hash(data.password, 10);
     }
     const user = await prisma_1.default.user.update({
         where: { id: userId },

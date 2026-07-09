@@ -63,7 +63,7 @@ export const candidateAttempts = async (req: Request, res: Response) => {
 export const editCandidate = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, email, mobileNumber, isActive, profilePhoto } = req.body;
+    const { name, email, mobileNumber, isActive, profilePhoto, password } = req.body;
 
     const current = await prisma.user.findUnique({
       where: { id: id as string },
@@ -75,6 +75,7 @@ export const editCandidate = async (req: Request, res: Response) => {
       mobileNumber,
       isActive,
       profilePhoto,
+      password,
     });
 
     if (isActive !== undefined && current && current.isActive !== isActive) {

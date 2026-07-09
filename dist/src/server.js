@@ -35,6 +35,7 @@ const study_routes_1 = __importDefault(require("./routes/study.routes"));
 const aiReading_routes_1 = __importDefault(require("./routes/aiReading.routes"));
 const reading_routes_1 = __importDefault(require("./routes/reading.routes"));
 const vocabulary_routes_1 = __importDefault(require("./routes/vocabulary.routes"));
+const questionOs_routes_1 = __importDefault(require("./routes/questionOs.routes"));
 const prisma_1 = __importDefault(require("./utils/prisma"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -107,6 +108,7 @@ app.use("/study", study_routes_1.default);
 app.use("/ai-reading", aiReading_routes_1.default);
 app.use("/reading", reading_routes_1.default);
 app.use("/vocabulary", vocabulary_routes_1.default);
+app.use("/question-os", questionOs_routes_1.default);
 app.get("/", (req, res) => {
     res.send("QuizCraft Backend Running 🚀");
 });

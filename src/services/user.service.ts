@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import prisma from "../utils/prisma";
 
 /**
@@ -187,6 +188,7 @@ export const updateCandidateDetails = async (
     mobileNumber?: string;
     isActive?: boolean;
     profilePhoto?: string;
+    password?: string;
   }
 ) => {
   // Check for uniqueness if email is changed
@@ -207,6 +209,10 @@ export const updateCandidateDetails = async (
     if (existingMobile) {
       throw new Error("Mobile number already registered by another candidate");
     }
+  }
+
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
   }
 
   const user = await prisma.user.update({
